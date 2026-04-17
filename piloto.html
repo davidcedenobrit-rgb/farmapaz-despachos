@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Farmapaz · Piloto</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#080a10;--bg2:#0f1119;--bg3:#141720;--border:#1e2436;--border2:#252d40;
+  --text:#d8dff0;--muted:#4a5270;--muted2:#7880a0;
+  --green:#22c55e;--orange:#f97316;--red:#ef4444;--yellow:#eab308;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;overflow-x:hidden;}
+
+/* ── LOGIN ── */
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 30% 40%,#0d1f3a,var(--bg));}
+.login-logo{text-align:center;margin-bottom:32px;}
+.login-pill{display:inline-block;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:20px;padding:4px 14px;font-size:10px;font-weight:700;letter-spacing:3px;color:#fb923c;text-transform:uppercase;margin-bottom:12px;}
+.login-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;}
+.login-sub{font-size:12px;color:var(--muted2);margin-top:6px;}
+.lbox{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:360px;}
+.lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);display:block;margin-bottom:8px;}
+.linp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px;color:var(--text);font-family:'Inter',sans-serif;font-size:15px;outline:none;margin-bottom:16px;transition:border-color .2s;}
+.linp:focus{border-color:var(--orange);}
+.lerr{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px;display:none;}
+.lbtn{width:100%;background:linear-gradient(135deg,#c45a0a,#e07020);border:none;border-radius:12px;padding:16px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.tb-left{}
+.tb-name{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;}
+.tb-role{font-size:11px;color:var(--muted2);margin-top:1px;}
+
+/* GPS STATUS */
+.gps-status{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;}
+.gps-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+.gps-dot.active{background:var(--green);animation:gpsblink 2s infinite;}
+.gps-dot.error{background:var(--red);}
+@keyframes gpsblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+.gps-txt{font-size:11px;font-weight:600;color:var(--muted2);}
+.gps-txt.active{color:var(--green);}
+.gps-txt.error{color:var(--red);}
+
+/* CONTENT */
+.content{padding:16px;flex:1;}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-ico{font-size:48px;display:block;margin-bottom:14px;}
+.empty-txt{font-size:14px;line-height:1.5;}
+
+/* PEDIDO CARD */
+.pedido-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.pc-head{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;}
+.pc-num{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--orange);}
+.pc-badge{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px;}
+.b-asignado{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.3);}
+.b-en_ruta{background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.3);}
+.b-entregado{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
+
+.pc-body{padding:16px 18px;}
+.pc-cliente{font-size:17px;font-weight:700;margin-bottom:6px;}
+.pc-dir{font-size:13px;color:var(--muted2);line-height:1.5;display:flex;gap:6px;margin-bottom:12px;}
+.pc-dir-ico{flex-shrink:0;margin-top:2px;}
+.pc-desc{font-size:12px;color:var(--muted2);background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5;border-left:3px solid var(--border2);}
+.pc-tel{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.tel-btn{flex:1;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:11px;color:#4ade80;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;}
+.maps-btn{flex:1;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:11px;color:#60a5fa;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;}
+
+/* ACTION BTNs GRANDES */
+.action-area{display:flex;flex-direction:column;gap:10px;}
+.action-btn{width:100%;border:none;border-radius:14px;padding:18px;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:10px;}
+.action-btn:active{opacity:.8;transform:scale(.98);}
+.btn-salir   {background:linear-gradient(135deg,#c45a0a,#f97316);color:#fff;}
+.btn-entregar{background:linear-gradient(135deg,#166534,#22c55e);color:#fff;}
+.btn-disabled{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);}
+
+/* GPS INFO */
+.gps-info{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--muted2);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.gps-coords{font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted2);}
+
+/* TIEMPO */
+.pc-tiempo{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+.tiempo-badge{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;}
+.tiempo-label{font-size:11px;color:var(--muted2);}
+
+/* FOOTER */
+.footer{background:var(--bg2);border-top:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;}
+.footer-txt{font-size:10px;color:var(--muted);}
+.logout-btn{background:none;border:none;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;padding:4px 0;}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap;text-align:center;max-width:90vw;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(34,197,94,.5);color:#4ade80;}
+#toast.err{border-color:rgba(239,68,68,.5);color:#f87171;}
+#toast.info{border-color:rgba(249,115,22,.4);color:#fb923c;}
+
+.loader{text-align:center;padding:40px;color:var(--muted);}
+.spin{display:inline-block;width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:rot .7s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">
+    <div class="login-pill">Navi Group</div>
+    <div class="login-title">Farmapaz Delivery</div>
+    <div class="login-sub">Portal del Piloto</div>
+  </div>
+  <div class="lbox">
+    <div id="lerr" class="lerr"></div>
+    <label class="lbl">Correo</label>
+    <input class="linp" type="email" id="lemail" placeholder="piloto.a@farmapaz.com" autocomplete="email">
+    <label class="lbl">Contraseña</label>
+    <input class="linp" type="password" id="lpass" placeholder="••••••••" autocomplete="current-password">
+    <button class="lbtn" onclick="doLogin()">ENTRAR</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-name" id="tb-name">Piloto</div>
+      <div class="tb-role">🏍️ Delivery · Farmapaz</div>
+    </div>
+    <div class="gps-status" id="gps-status" onclick="activarGPS()">
+      <div class="gps-dot" id="gps-dot"></div>
+      <span class="gps-txt" id="gps-txt">GPS apagado</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div id="pedidos-wrap">
+      <div class="loader"><div class="spin"></div></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-txt" id="gps-coords-footer">Sin ubicación activa</div>
+    <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const sb=supabase.createClient(
+  'https://juxvrbzrxnwrsbeespuc.supabase.co',
+  'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
+);
+
+let usuario=null, perfil=null, piloto=null;
+let pedidos=[], miLat=null, miLng=null;
+let gpsWatchId=null, gpsUpdateTimer=null;
+let tiempoTimers={};
+
+// ── AUTH ──────────────────────────────────────────
+async function doLogin(){
+  const email=document.getElementById('lemail').value.trim();
+  const pass=document.getElementById('lpass').value;
+  const errEl=document.getElementById('lerr');
+  errEl.style.display='none';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){errEl.textContent='Credenciales incorrectas.';errEl.style.display='block';return;}
+  await iniciarApp(data.user);
+}
+document.getElementById('lpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+async function iniciarApp(user){
+  usuario=user;
+  const {data:prf}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(!prf){
+    const e=document.getElementById('lerr');
+    e.textContent='Sin perfil. Contacta al administrador.';
+    e.style.display='block';
+    await sb.auth.signOut();return;
+  }
+  if(prf.rol!=='piloto'){
+    const e=document.getElementById('lerr');
+    e.textContent='Este portal es solo para pilotos.';
+    e.style.display='block';
+    await sb.auth.signOut();return;
+  }
+  perfil=prf;
+  document.getElementById('tb-name').textContent=prf.nombre;
+
+  // Obtener registro del piloto
+  const {data:pil}=await sb.from('pilotos').select('*').eq('profile_id',user.id).single();
+  piloto=pil;
+
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+
+  await cargarPedidos();
+  suscribirRealtime();
+  activarGPS();
+}
+
+async function doLogout(){
+  detenerGPS();
+  await sb.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  pedidos=[];piloto=null;
+}
+
+// ── GPS ───────────────────────────────────────────
+function activarGPS(){
+  if(!navigator.geolocation){
+    setGPSStatus('error','GPS no disponible');return;
+  }
+  setGPSStatus('buscando','Buscando señal...');
+
+  gpsWatchId=navigator.geolocation.watchPosition(
+    pos=>{
+      miLat=pos.coords.latitude;
+      miLng=pos.coords.longitude;
+      setGPSStatus('active','GPS activo');
+      document.getElementById('gps-coords-footer').textContent=
+        `📍 ${miLat.toFixed(5)}, ${miLng.toFixed(5)}`;
+      guardarUbicacion();
+    },
+    err=>{
+      const msgs={1:'Permiso denegado',2:'Sin señal GPS',3:'Tiempo agotado'};
+      setGPSStatus('error',msgs[err.code]||'Error GPS');
+    },
+    {enableHighAccuracy:true,maximumAge:10000,timeout:15000}
+  );
+
+  // Actualizar en Supabase cada 30 segundos
+  gpsUpdateTimer=setInterval(()=>{
+    if(miLat&&miLng)guardarUbicacion();
+  },30000);
+}
+
+function detenerGPS(){
+  if(gpsWatchId)navigator.geolocation.clearWatch(gpsWatchId);
+  clearInterval(gpsUpdateTimer);
+  gpsWatchId=null;gpsUpdateTimer=null;
+}
+
+async function guardarUbicacion(){
+  if(!piloto||!miLat||!miLng)return;
+  await sb.from('pilotos').update({
+    lat:miLat,lng:miLng,ubicacion_at:new Date().toISOString()
+  }).eq('id',piloto.id);
+}
+
+function setGPSStatus(estado,txt){
+  const dot=document.getElementById('gps-dot');
+  const label=document.getElementById('gps-txt');
+  dot.className='gps-dot';
+  label.className='gps-txt';
+  if(estado==='active'){dot.classList.add('active');label.classList.add('active');}
+  else if(estado==='error'){dot.classList.add('error');label.classList.add('error');}
+  label.textContent=txt;
+}
+
+// ── PEDIDOS ───────────────────────────────────────
+async function cargarPedidos(){
+  if(!piloto){renderPedidos([]);return;}
+  const hoy=new Date().toISOString().split('T')[0];
+  const {data,error}=await sb.from('pedidos')
+    .select('*')
+    .eq('piloto_id',piloto.id)
+    .in('estado',['asignado','en_ruta','entregado'])
+    .gte('created_at',hoy+'T00:00:00')
+    .order('created_at',{ascending:false});
+  if(error){toast('Error al cargar pedidos','err');return;}
+  pedidos=data||[];
+  renderPedidos(pedidos);
+}
+
+function renderPedidos(lista){
+  const wrap=document.getElementById('pedidos-wrap');
+  if(!lista.length){
+    wrap.innerHTML=`
+      <div class="empty-state">
+        <span class="empty-ico">📭</span>
+        <div class="empty-txt">No tienes despachos asignados<br>por ahora.<br><br>El Monitor te asignará pedidos<br>cuando estén listos.</div>
+      </div>`;
+    return;
+  }
+
+  // Separar activos de entregados
+  const activos=lista.filter(p=>p.estado!=='entregado');
+  const entregados=lista.filter(p=>p.estado==='entregado');
+
+  let html='';
+  if(activos.length){
+    html+=activos.map(p=>cardHTML(p)).join('');
+  }
+  if(entregados.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:8px 0 10px;">Entregados hoy</div>`;
+    html+=entregados.map(p=>cardHTML(p)).join('');
+  }
+  wrap.innerHTML=html;
+}
+
+function cardHTML(p){
+  const eLabel={asignado:'ASIGNADO',en_ruta:'EN RUTA',entregado:'ENTREGADO'}[p.estado]||p.estado;
+  const eBadge={asignado:'b-asignado',en_ruta:'b-en_ruta',entregado:'b-entregado'}[p.estado]||'';
+
+  // Tiempo en ruta
+  let tiempoHTML='';
+  if(p.estado==='en_ruta'&&p.salida_at){
+    const mins=Math.floor((Date.now()-new Date(p.salida_at).getTime())/60000);
+    tiempoHTML=`<div class="pc-tiempo">
+      <div class="tiempo-badge" id="timer-${p.id}">${formatMins(mins)}</div>
+      <div class="tiempo-label">en ruta</div>
+    </div>`;
+  }
+
+  // Descripción
+  const descHTML=p.descripcion
+    ?`<div class="pc-desc">📦 ${p.descripcion}</div>`:'';
+
+  // Teléfono + Maps
+  const telHTML=p.cliente_telefono?`
+    <div class="pc-tel">
+      <a class="tel-btn" href="tel:${p.cliente_telefono}">📞 Llamar</a>
+      <a class="maps-btn" href="https://maps.google.com/?q=${encodeURIComponent(p.direccion)}" target="_blank">🗺 Ver mapa</a>
+    </div>`:'';
+
+  // Botones de acción
+  let accionHTML='';
+  if(p.estado==='asignado'){
+    accionHTML=`
+      <div class="action-area">
+        <div class="gps-info" id="gps-info-${p.id}">
+          <span>📍</span>
+          <span id="gps-info-txt-${p.id}">Activa el GPS antes de salir</span>
+        </div>
+        <button class="action-btn btn-salir" onclick="marcarEnRuta('${p.id}')">
+          🚀 Confirmar Salida
+        </button>
+      </div>`;
+  } else if(p.estado==='en_ruta'){
+    accionHTML=`
+      <div class="action-area">
+        <div class="gps-info">
+          <span>📍</span>
+          <span id="gps-info-txt-${p.id}">${miLat?`Ubicación activa · ${miLat.toFixed(4)}, ${miLng.toFixed(4)}`:'Esperando señal GPS...'}</span>
+        </div>
+        <button class="action-btn btn-entregar" onclick="marcarEntregado('${p.id}')">
+          ✅ Confirmar Entregado
+        </button>
+      </div>`;
+  } else if(p.estado==='entregado'){
+    accionHTML=`<div class="action-btn btn-disabled" style="font-size:15px;">✓ Entregado a las ${formatHora(p.entregado_at)}</div>`;
+  }
+
+  return `
+  <div class="pedido-card">
+    <div class="pc-head">
+      <div>
+        <div class="pc-num">#${p.numero_pedido}</div>
+      </div>
+      <div class="pc-badge ${eBadge}">${eLabel}</div>
+    </div>
+    <div class="pc-body">
+      <div class="pc-cliente">${p.cliente_nombre}</div>
+      <div class="pc-dir"><span class="pc-dir-ico">📍</span>${p.direccion}</div>
+      ${descHTML}
+      ${tiempoHTML}
+      ${telHTML}
+      ${accionHTML}
+    </div>
+  </div>`;
+}
+
+// ── ACCIONES ──────────────────────────────────────
+async function marcarEnRuta(pedidoId){
+  const update={estado:'en_ruta'};
+  if(miLat&&miLng){
+    update.lat_entrega=miLat;
+    update.lng_entrega=miLng;
+  }
+  const {error}=await sb.from('pedidos').update(update).eq('id',pedidoId);
+  if(error){toast('Error al actualizar','err');return;}
+  toast('🚀 ¡En ruta! El monitor está siguiendo tu recorrido','info');
+  await cargarPedidos();
+}
+
+async function marcarEntregado(pedidoId){
+  const update={estado:'entregado'};
+  if(miLat&&miLng){
+    update.lat_entrega=miLat;
+    update.lng_entrega=miLng;
+  }
+  const {error}=await sb.from('pedidos').update(update).eq('id',pedidoId);
+  if(error){toast('Error al actualizar','err');return;}
+  toast('✅ ¡Entregado! Buen trabajo','ok');
+  await cargarPedidos();
+}
+
+// ── REALTIME ──────────────────────────────────────
+function suscribirRealtime(){
+  if(!piloto)return;
+  sb.channel('piloto-pedidos')
+    .on('postgres_changes',{event:'*',schema:'public',table:'pedidos',
+      filter:`piloto_id=eq.${piloto.id}`},()=>cargarPedidos())
+    .subscribe();
+}
+
+// ── UTILS ─────────────────────────────────────────
+function formatMins(mins){
+  if(mins<60)return `${String(mins).padStart(2,'0')}:00`;
+  const h=Math.floor(mins/60),m=mins%60;
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function formatHora(iso){
+  if(!iso)return '—';
+  return new Date(iso).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
+}
+
+let toastT;
+function toast(msg,tipo){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show '+(tipo||'info');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.className='',4000);
+}
+
+// Auto-login sesión activa
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)await iniciarApp(session.user);
+})();
+
+// Actualizar coordenadas en pantalla cada 10 seg
+setInterval(()=>{
+  if(!miLat)return;
+  document.querySelectorAll('[id^="gps-info-txt-"]').forEach(el=>{
+    el.textContent=`Ubicación activa · ${miLat.toFixed(4)}, ${miLng.toFixed(4)}`;
+  });
+},10000);
+</script>
+</body>
+</html>
