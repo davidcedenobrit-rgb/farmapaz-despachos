@@ -911,7 +911,7 @@ function exportarExcel(){
 }
 
 // ── USUARIOS ──────────────────────────────────────
-const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/hyper-processor';
+const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/hyper-processor'; // v2026-04-17
 
 async function cargarUsuarios() {
   const { data } = await sb.from('profiles').select('*').order('rol').order('nombre');
