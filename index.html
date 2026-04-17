@@ -53,6 +53,9 @@ const sb=supabase.createClient(
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
 );
 
+// Rate limiting: máx 5 intentos en 15 min
+var _loginAttempts = { count: 0, resetAt: 0 };
+
 document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 async function doLogin(){
