@@ -927,20 +927,25 @@ async function cargarUsuarios() {
     return;
   }
   const rolLabel = { monitor: 'Monitor', call_center: 'Call Center', piloto: 'Piloto' };
-  body.innerHTML = data.map(u => {
-    const init = u.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    return '<div class="usr-card" style="' + (!u.activo ? 'opacity:.5' : '') + '">' +
+  const cards = [];
+  data.forEach(function(u) {
+    const init = u.nombre.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'usr-card';
+    div.style.opacity = u.activo ? '1' : '0.5';
+    div.innerHTML =
       '<div class="usr-av ' + u.rol + '">' + init + '</div>' +
       '<div class="usr-info">' +
         '<div class="usr-name">' + u.nombre + '</div>' +
         '<div class="usr-email">' + u.email + '</div>' +
-        '<div class="usr-rol-badge rb-' + u.rol + '">' + (rolLabel[u.rol] || u.rol) + '</div>' +
+        '<div class="usr-rol-badge rb-' + u.rol + '">' + (rolLabel[u.rol]||u.rol) + '</div>' +
       '</div>' +
-      '<button class="usr-toggle" onclick="toggleUsuario('' + u.id + '',' + u.activo + ')">' +
+      '<button class="usr-toggle" onclick="toggleUsuario('' + u.id + '',' + (u.activo?'true':'false') + ')">' +
         (u.activo ? 'Desactivar' : 'Activar') +
-      '</button>' +
-    '</div>';
-  }).join('');
+      '</button>';
+    cards.push(div.outerHTML);
+  });
+  body.innerHTML = cards.join('');
 }
 
 async function crearUsuario() {
@@ -993,10 +998,11 @@ async function crearUsuario() {
 }
 
 async function toggleUsuario(id, activo) {
-  var nuevoEstado = !activo;
+  var esActivo = (activo === 'true' || activo === true);
+  var nuevoEstado = !esActivo;
   var resp = await sb.from('profiles').update({ activo: nuevoEstado }).eq('id', id);
   if (resp.error) { toast('Error al actualizar', 'err'); return; }
-  toast(activo ? 'Usuario desactivado' : 'Usuario activado ✅', 'ok');
+  toast(nuevoEstado ? 'Usuario activado' : 'Usuario desactivado', 'ok');
   cargarUsuarios();
 }
 
