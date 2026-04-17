@@ -627,20 +627,20 @@ async function confirmarAsignacion(){
 
   // Enviar notificación push al piloto
   try {
-    const {data:{session}}=await sb.auth.getSession();
-    await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+session.access_token
-      },
-      body:JSON.stringify({
-        piloto_id: pid,
-        numero_pedido: pedido?.numero_pedido||'',
-        cliente_nombre: pedido?.cliente_nombre||'',
-        direccion: pedido?.direccion||''
-      })
-    });
+    // Obtener FCM token del piloto
+    const {data:pilotData}=await sb.from('pilotos').select('fcm_token,nombre').eq('id',pid).single();
+    if(pilotData?.fcm_token){
+      await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          fcm_token: pilotData.fcm_token,
+          titulo: '🏍️ Nuevo pedido asignado',
+          cuerpo: '#'+(pedido?.numero_pedido||'')+' · '+(pedido?.cliente_nombre||'')+' · '+(pedido?.direccion||'')
+        })
+      });
+      console.log('Push enviado a',pilotData.nombre);
+    }
   } catch(e){ console.log('Notificación no enviada:', e.message); }
 }
 
