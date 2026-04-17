@@ -6,8 +6,7 @@
 <title>Farmapaz · Piloto</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -173,59 +172,54 @@ let pedidos=[], miLat=null, miLng=null;
 let gpsWatchId=null, gpsUpdateTimer=null;
 let tiempoTimers={};
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyBbsa1G4H9DlJ6GK6aNy4izJSiQ3EWqHK4",
-  authDomain: "farmapaz-despachos.firebaseapp.com",
-  projectId: "farmapaz-despachos",
-  storageBucket: "farmapaz-despachos.firebasestorage.app",
-  messagingSenderId: "3879404311",
-  appId: "1:3879404311:web:5d9ca356a8161d2f24ad52"
-};
-const VAPID_KEY = "BA4oIsqRZ4rUUQCt8rbGDewh7ZQzgr1ky4sfNXETPvjpIbXxAIc2_P_OrANDjJU14IcERtzYUx4rHawjvVGI9nk";
-let messaging = null;
-
-async function iniciarNotificaciones() {
+// Alerta sonora via Web Audio API (sin dependencias externas)
+function sonarAlarma() {
   try {
-    firebase.initializeApp(firebaseConfig);
-    messaging = firebase.messaging();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const beep = (freq, start, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    beep(880, 0, 0.15);
+    beep(1100, 0.2, 0.15);
+    beep(880, 0.4, 0.15);
+    beep(1100, 0.6, 0.3);
+  } catch(e) {}
+}
 
-    // Registrar service worker
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('SW registrado:', reg.scope);
-    }
+function vibrarTelefono() {
+  if ('vibrate' in navigator) {
+    navigator.vibrate([300, 100, 300, 100, 500]);
+  }
+}
 
-    // Pedir permiso de notificaciones
-    const permiso = await Notification.requestPermission();
-    if (permiso !== 'granted') {
-      console.log('Permiso de notificaciones denegado');
-      return;
-    }
-
-    // Obtener token FCM
-    const token = await messaging.getToken({ 
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.ready
+function alertaNuevoPedido(numeroPedido, cliente) {
+  // Sonido + vibración
+  sonarAlarma();
+  vibrarTelefono();
+  // Notificación nativa del navegador si tiene permiso
+  if (Notification.permission === 'granted') {
+    new Notification('🏍️ Nuevo pedido asignado', {
+      body: `#${numeroPedido} · ${cliente}`,
+      icon: '/icon-192.png',
+      vibrate: [300, 100, 300],
+      tag: 'nuevo-pedido',
+      renotify: true
     });
+  }
+  toast(`🔔 Nuevo pedido: #${numeroPedido} · ${cliente}`, 'info');
+}
 
-    if (token && piloto) {
-      // Guardar token en Supabase para que el monitor pueda enviar notificaciones
-      await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
-      console.log('Token FCM guardado:', token.slice(0,20)+'...');
-    }
-
-    // Manejar notificaciones cuando la app está abierta
-    messaging.onMessage((payload) => {
-      console.log('Notificación recibida:', payload);
-      const { title, body } = payload.notification;
-      toast(`🔔 ${title}: ${body}`, 'info');
-      // Recargar pedidos automáticamente
-      cargarPedidos();
-    });
-
-  } catch(err) {
-    console.log('Error notificaciones:', err.message);
+async function pedirPermisoNotificaciones() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
   }
 }
 
@@ -270,8 +264,8 @@ async function iniciarApp(user){
   suscribirRealtime();
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
-  // Iniciar notificaciones push
-  setTimeout(iniciarNotificaciones, 2000);
+  // Pedir permiso de notificaciones
+  setTimeout(pedirPermisoNotificaciones, 2000);
 }
 
 async function doLogout(){
@@ -497,8 +491,23 @@ async function marcarEntregado(pedidoId){
 function suscribirRealtime(){
   if(!piloto)return;
   sb.channel('piloto-pedidos')
-    .on('postgres_changes',{event:'*',schema:'public',table:'pedidos',
-      filter:`piloto_id=eq.${piloto.id}`},()=>cargarPedidos())
+    .on('postgres_changes',{
+      event:'INSERT',schema:'public',table:'pedidos',
+      filter:`piloto_id=eq.${piloto.id}`
+    }, payload => {
+      alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
+      cargarPedidos();
+    })
+    .on('postgres_changes',{
+      event:'UPDATE',schema:'public',table:'pedidos',
+      filter:`piloto_id=eq.${piloto.id}`
+    }, payload => {
+      // Alertar solo cuando se asigna (cambia a asignado)
+      if(payload.new.estado === 'asignado' && payload.old.estado !== 'asignado') {
+        alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
+      }
+      cargarPedidos();
+    })
     .subscribe();
 }
 
