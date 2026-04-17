@@ -143,6 +143,18 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <div id="toast"></div>
 
 <script>
+
+// ── SEGURIDAD: Sanitización XSS ──────────────────────
+function sanitizar(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
 const sb=supabase.createClient(
   'https://juxvrbzrxnwrsbeespuc.supabase.co',
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
