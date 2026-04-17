@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farmapaz · Call Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#080a10;--bg2:#0f1119;--bg3:#141720;--bg4:#1a1f2e;--border:#1e2436;--border2:#252d40;--text:#d8dff0;--muted:#4a5270;--muted2:#7880a0;--orange:#f97316;--green:#22c55e;--yellow:#eab308;--red:#ef4444;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;height:50px;padding:0 20px;gap:12px;}
+.tb-brand{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:19px;}
+.tb-brand span{color:var(--orange);}
+.tb-role{font-size:11px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 10px;}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.tb-user{font-size:12px;color:var(--muted2);}
+.live-wrap{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#4ade80;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.logout-btn{background:none;border:1px solid var(--border2);border-radius:6px;padding:5px 12px;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;}
+.logout-btn:hover{color:var(--red);border-color:var(--red);}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:400px 1fr;gap:0;height:calc(100vh - 50px);}
+
+/* PANEL IZQUIERDO: FORMULARIO */
+.panel-form{background:var(--bg2);border-right:1px solid var(--border);padding:24px;overflow-y:auto;}
+.form-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+.frow{margin-bottom:16px;}
+.flbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);display:block;margin-bottom:8px;}
+.finp,.ftxt{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;padding:12px 14px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+.finp:focus,.ftxt:focus{border-color:var(--orange);}
+.ftxt{resize:vertical;min-height:80px;}
+.submit-btn{width:100%;background:linear-gradient(135deg,#c45a0a,#e07020);border:none;border-radius:10px;padding:14px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:opacity .2s;margin-top:4px;}
+.submit-btn:hover{opacity:.88;}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+.form-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#f87171;margin-bottom:14px;display:none;}
+.form-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#4ade80;margin-bottom:14px;display:none;}
+.divider{height:1px;background:var(--border);margin:24px 0;}
+.stats-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
+.sm-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.sm-val{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1;margin-bottom:3px;}
+.sm-lbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.sm-val.white{color:var(--text);}
+.sm-val.green{color:var(--green);}
+.sm-val.orange{color:var(--orange);}
+.sm-val.yellow{color:var(--yellow);}
+
+/* PANEL DERECHO: PEDIDOS DEL DÍA */
+.panel-list{display:flex;flex-direction:column;overflow:hidden;}
+.list-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.list-title{font-weight:600;font-size:14px;}
+.list-count{font-size:11px;color:var(--muted2);}
+.list-body{overflow-y:auto;flex:1;padding:16px;}
+
+/* PEDIDO ROW */
+.pedido-row{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--muted);border-radius:10px;padding:14px 16px;margin-bottom:10px;animation:fadeUp .2s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.pedido-row.pendiente{border-left-color:#3d4260;}
+.pedido-row.asignado {border-left-color:var(--yellow);}
+.pedido-row.en_ruta  {border-left-color:var(--orange);}
+.pedido-row.entregado{border-left-color:var(--green);}
+.pr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.pr-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--orange);}
+.pr-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 8px;border-radius:20px;}
+.b-pendiente{background:rgba(61,66,96,.3);color:#8890b8;}
+.b-asignado {background:rgba(234,179,8,.12);color:#eab308;}
+.b-en_ruta  {background:rgba(249,115,22,.12);color:#f97316;}
+.b-entregado{background:rgba(34,197,94,.12);color:#22c55e;}
+.pr-cliente{font-size:14px;font-weight:700;margin-bottom:3px;}
+.pr-dir{font-size:11px;color:var(--muted2);margin-bottom:6px;display:flex;gap:4px;}
+.pr-meta{display:flex;align-items:center;gap:8px;}
+.pr-piloto{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:3px 8px;color:var(--muted2);}
+.pr-time{font-size:11px;color:var(--muted);margin-left:auto;}
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-ico{font-size:40px;display:block;margin-bottom:12px;}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:rot .7s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:11px 20px;font-size:12px;font-weight:600;z-index:900;transition:transform .3s;white-space:nowrap;pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(34,197,94,.5);color:#4ade80;}
+#toast.err{border-color:rgba(239,68,68,.5);color:#f87171;}
+
+@media(max-width:768px){.layout{grid-template-columns:1fr;}.panel-form{height:auto;}.panel-list{height:50vh;}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-brand">Farmapaz <span>·</span></div>
+  <div class="tb-role">📞 Call Center</div>
+  <div class="tb-right">
+    <div class="live-wrap"><div class="live-dot"></div>EN VIVO</div>
+    <span class="tb-user" id="tb-user"></span>
+    <button class="logout-btn" onclick="doLogout()">Salir</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- FORMULARIO -->
+  <div class="panel-form">
+    <div class="form-title">📋 Nuevo Pedido</div>
+    <div id="form-err" class="form-err"></div>
+    <div id="form-ok" class="form-ok"></div>
+    <div class="frow"><label class="flbl">N° de Factura</label><input class="finp" id="n-factura" placeholder="Ej: 0041" maxlength="30"></div>
+    <div class="frow"><label class="flbl">Nombre del cliente</label><input class="finp" id="n-nombre" placeholder="Ej: María González"></div>
+    <div class="frow"><label class="flbl">Teléfono</label><input class="finp" id="n-tel" placeholder="+58412-0000000" type="tel"></div>
+    <div class="frow"><label class="flbl">Dirección de entrega</label><input class="finp" id="n-dir" placeholder="Av. Principal, Casa #10, Barrio..."></div>
+    <div class="frow"><label class="flbl">Productos</label><textarea class="ftxt" id="n-desc" placeholder="Ej: 2x Paracetamol 500mg, 1x Vitamina C 1g..."></textarea></div>
+    <button class="submit-btn" id="submit-btn" onclick="crearPedido()">+ CREAR PEDIDO</button>
+
+    <div class="divider"></div>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Resumen del día</div>
+    <div class="stats-mini">
+      <div class="sm-card"><div class="sm-val white" id="st-total">0</div><div class="sm-lbl">Total hoy</div></div>
+      <div class="sm-card"><div class="sm-val green"  id="st-entregados">0</div><div class="sm-lbl">Entregados</div></div>
+      <div class="sm-card"><div class="sm-val orange" id="st-ruta">0</div><div class="sm-lbl">En ruta</div></div>
+      <div class="sm-card"><div class="sm-val yellow" id="st-pend">0</div><div class="sm-lbl">En espera</div></div>
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div class="panel-list">
+    <div class="list-header">
+      <div class="list-title">Despachos del día</div>
+      <div class="list-count" id="list-count"></div>
+    </div>
+    <div class="list-body" id="list-body">
+      <div class="empty"><span class="spin"></span></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const sb=supabase.createClient(
+  'https://juxvrbzrxnwrsbeespuc.supabase.co',
+  'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
+);
+
+let usuario=null, pedidos=[];
+
+// AUTH — verificar sesión al cargar
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='/';return;}
+  const {data:prf}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+  if(!prf||prf.rol==='piloto'){window.location.href='/';return;}
+  usuario=session.user;
+  document.getElementById('tb-user').textContent=prf.nombre;
+  await cargarPedidos();
+  suscribirRealtime();
+})();
+
+async function doLogout(){
+  await sb.auth.signOut();window.location.href='/';
+}
+
+// CREAR PEDIDO
+async function crearPedido(){
+  const factura=document.getElementById('n-factura').value.trim();
+  const nombre=document.getElementById('n-nombre').value.trim();
+  const tel=document.getElementById('n-tel').value.trim();
+  const dir=document.getElementById('n-dir').value.trim();
+  const desc=document.getElementById('n-desc').value.trim();
+
+  const errEl=document.getElementById('form-err');
+  const okEl=document.getElementById('form-ok');
+  errEl.style.display='none';okEl.style.display='none';
+
+  if(!factura){errEl.textContent='El número de factura es obligatorio.';errEl.style.display='block';return;}
+  if(!nombre||!tel||!dir){errEl.textContent='Completa nombre, teléfono y dirección.';errEl.style.display='block';return;}
+
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.textContent='Creando...';
+
+  const {error}=await sb.from('pedidos').insert({
+    cliente_nombre:nombre,cliente_telefono:tel,
+    direccion:dir,descripcion:desc||null,
+    creado_por:usuario.id,numero_pedido:factura
+  });
+
+  btn.disabled=false;btn.textContent='+ CREAR PEDIDO';
+
+  if(error){
+    if(error.code==='23505'){errEl.textContent='Ya existe un pedido con ese número de factura.';}
+    else{errEl.textContent='Error: '+error.message;}
+    errEl.style.display='block';return;
+  }
+
+  // Limpiar formulario
+  ['n-factura','n-nombre','n-tel','n-dir','n-desc'].forEach(id=>document.getElementById(id).value='');
+  okEl.textContent=`✅ Pedido #${factura} creado — el Monitor lo asignará en breve.`;
+  okEl.style.display='block';
+  setTimeout(()=>okEl.style.display='none',4000);
+  document.getElementById('n-factura').focus();
+}
+
+// CARGAR PEDIDOS
+async function cargarPedidos(){
+  const hoy=new Date().toISOString().split('T')[0];
+  const {data}=await sb.from('pedidos')
+    .select('*, pilotos(nombre)')
+    .gte('created_at',hoy+'T00:00:00')
+    .order('created_at',{ascending:false});
+  pedidos=data||[];
+  renderLista();
+  actualizarStats();
+}
+
+function renderLista(){
+  const body=document.getElementById('list-body');
+  document.getElementById('list-count').textContent=pedidos.length+' pedidos';
+  if(!pedidos.length){
+    body.innerHTML='<div class="empty"><span class="empty-ico">📭</span>No hay pedidos hoy todavía</div>';
+    return;
+  }
+  body.innerHTML=pedidos.map(p=>{
+    const eLabel={pendiente:'EN ESPERA',asignado:'ASIGNADO',en_ruta:'EN RUTA',entregado:'ENTREGADO',cerrado:'CERRADO'}[p.estado]||p.estado;
+    const hora=new Date(p.created_at).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
+    const pNom=p.pilotos?.nombre;
+    return `<div class="pedido-row ${p.estado}">
+      <div class="pr-head">
+        <div class="pr-num">#${p.numero_pedido}</div>
+        <div class="pr-badge b-${p.estado}">${eLabel}</div>
+      </div>
+      <div class="pr-cliente">${p.cliente_nombre}</div>
+      <div class="pr-dir"><span>📍</span>${p.direccion}</div>
+      <div class="pr-meta">
+        ${pNom?`<div class="pr-piloto">🏍️ ${pNom}</div>`:'<div class="pr-piloto">Sin piloto</div>'}
+        <div class="pr-time">${hora}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function actualizarStats(){
+  document.getElementById('st-total').textContent=pedidos.length;
+  document.getElementById('st-entregados').textContent=pedidos.filter(p=>p.estado==='entregado'||p.estado==='cerrado').length;
+  document.getElementById('st-ruta').textContent=pedidos.filter(p=>p.estado==='en_ruta').length;
+  document.getElementById('st-pend').textContent=pedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado').length;
+}
+
+function suscribirRealtime(){
+  sb.channel('cc-pedidos').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>cargarPedidos()).subscribe();
+}
+
+// Enter en factura → foco en nombre
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('n-factura')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('n-nombre').focus();});
+  document.getElementById('n-nombre')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('n-tel').focus();});
+  document.getElementById('n-tel')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('n-dir').focus();});
+});
+
+let toastT;
+function toast(msg,tipo){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show '+tipo;
+  clearTimeout(toastT);toastT=setTimeout(()=>el.className='',3000);
+}
+</script>
+</body>
+</html>
