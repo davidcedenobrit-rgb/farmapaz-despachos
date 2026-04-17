@@ -677,9 +677,33 @@ function abrirAsignar(id,num){selId=id;document.getElementById('a-num').value=nu
 async function confirmarAsignacion(){
   const pid=document.getElementById('a-piloto').value;
   if(!pid){toast('Selecciona un piloto','err');return;}
+
+  // Obtener datos del pedido para la notificación
+  const pedido=pedidos.find(p=>p.id===selId);
+
   const {error}=await sb.from('pedidos').update({estado:'asignado',piloto_id:pid}).eq('id',selId);
   if(error){toast('Error al asignar','err');return;}
-  cerrarModal('m-asignar');toast('Piloto asignado ✅','ok');
+
+  cerrarModal('m-asignar');
+  toast('Piloto asignado ✅','ok');
+
+  // Enviar notificación push al piloto
+  try {
+    const {data:{session}}=await sb.auth.getSession();
+    await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/notificar-piloto',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+session.access_token
+      },
+      body:JSON.stringify({
+        piloto_id: pid,
+        numero_pedido: pedido?.numero_pedido||'',
+        cliente_nombre: pedido?.cliente_nombre||'',
+        direccion: pedido?.direccion||''
+      })
+    });
+  } catch(e){ console.log('Notificación no enviada:', e.message); }
 }
 
 async function cambiarEstado(id,estado){
