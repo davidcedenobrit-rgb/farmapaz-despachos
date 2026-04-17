@@ -210,7 +210,8 @@ async function iniciarApp(user){
 
   await cargarPedidos();
   suscribirRealtime();
-  activarGPS();
+  // Activar GPS automáticamente al entrar
+  setTimeout(activarGPS, 1000);
 }
 
 async function doLogout(){
@@ -267,7 +268,7 @@ function activarGPS(){
   if(gpsUpdateTimer)clearInterval(gpsUpdateTimer);
   gpsUpdateTimer=setInterval(()=>{
     if(miLat&&miLng)guardarUbicacion();
-  },30000);
+  },60000);
 }
 
 function detenerGPS(){
@@ -277,10 +278,11 @@ function detenerGPS(){
 }
 
 async function guardarUbicacion(){
-  if(!piloto||!miLat||!miLng)return;
+  if(!miLat||!miLng||!usuario)return;
+  // Actualizar por profile_id del usuario actual
   await sb.from('pilotos').update({
     lat:miLat,lng:miLng,ubicacion_at:new Date().toISOString()
-  }).eq('id',piloto.id);
+  }).eq('profile_id',usuario.id);
 }
 
 function setGPSStatus(estado,txt){
