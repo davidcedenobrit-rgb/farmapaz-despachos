@@ -690,7 +690,7 @@ async function confirmarAsignacion(){
   // Enviar notificación push al piloto
   try {
     const {data:{session}}=await sb.auth.getSession();
-    await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/notificar-piloto',{
+    await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
