@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/monitor",    "destination": "/monitor.html" },
+    { "source": "/callcenter", "destination": "/callcenter.html" },
+    { "source": "/piloto",     "destination": "/piloto.html" }
+  ]
+}
