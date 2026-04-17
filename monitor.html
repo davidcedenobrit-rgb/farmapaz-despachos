@@ -214,6 +214,18 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
 .rol-select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-family:"Inter",sans-serif;font-size:13px;outline:none;appearance:none;cursor:pointer;}
 .rol-select:focus{border-color:var(--orange);}
 .usr-empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+.gps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:20px;}
+.gps-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.gps-card-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.gps-card-body{padding:14px 16px;}
+.gps-active{border-color:rgba(34,197,94,.3);box-shadow:0 0 14px rgba(34,197,94,.1);}
+.gps-offline{opacity:.6;}
+.gps-coord{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-bottom:10px;line-height:1.6;}
+.gps-time{font-size:11px;color:var(--muted2);margin-bottom:12px;}
+.gps-map-btn{display:block;width:100%;background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;letter-spacing:.5px;}
+.gps-map-btn.off{background:var(--bg3);color:var(--muted);border:1px solid var(--border2);}
+.gps-update-info{text-align:center;padding:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);}
+.countdown{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--orange);}
 
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 20px;font-size:12px;font-weight:600;z-index:900;transition:transform .3s;white-space:nowrap;pointer-events:none;}
 #toast.show{transform:translateX(-50%) translateY(0);}
@@ -232,6 +244,7 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
     <button class="tab on" onclick="setTab('monitor',this)">📋 Monitor</button>
     <button class="tab" onclick="setTab('reportes',this)">📊 Reportes</button>
     <button class="tab" onclick="setTab('usuarios',this)">👥 Usuarios</button>
+    <button class="tab" onclick="setTab('gps',this)">📍 GPS Pilotos</button>
   </div>
   <div class="tb-right">
     <div class="live-badge"><div class="live-dot"></div>EN VIVO</div>
@@ -364,6 +377,24 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
   </div>
 </div>
 
+<!-- ═══ VISTA GPS ═══ -->
+<div class="view" id="view-gps">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div>
+      <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">📍 GPS Pilotos en tiempo real</span>
+      <span style="font-size:11px;color:var(--muted2);margin-left:10px;">Actualización automática cada 60 segundos</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:12px;color:var(--muted2);">Próxima actualización: <span class="countdown" id="gps-countdown">60</span>s</span>
+      <button onclick="actualizarGPS()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted2);font-size:12px;cursor:pointer;">↻ Actualizar ahora</button>
+    </div>
+  </div>
+  <div class="gps-grid" id="gps-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando ubicaciones...</div>
+  </div>
+  <div class="gps-update-info">Las ubicaciones se actualizan automáticamente desde el teléfono de cada piloto cada 60 segundos · Farmapaz · Navi Dev</div>
+</div>
+
 <!-- MODALES -->
 <div class="overlay" id="m-nuevo">
   <div class="modal">
@@ -444,6 +475,7 @@ function setTab(tab,btn){
   document.getElementById('view-'+tab).classList.add('on');
   if(tab==='reportes'&&reportePedidos.length===0)cargarReportes();
   if(tab==='usuarios')cargarUsuarios();
+  if(tab==='gps'){actualizarGPS();iniciarGPSCountdown();}
 }
 
 // ── RELOJ ─────────────────────────────────────────
@@ -937,6 +969,65 @@ async function toggleUsuario(id, activo) {
   if (error) { toast('Error al actualizar', 'err'); return; }
   toast(activo ? 'Usuario desactivado' : 'Usuario activado ✅', 'ok');
   await cargarUsuarios();
+}
+
+// ── GPS PILOTOS ───────────────────────────────────
+let gpsCountdownTimer=null, gpsRefreshTimer=null, gpsCountdownVal=60;
+
+async function actualizarGPS(){
+  const grid=document.getElementById('gps-grid');
+  const {data}=await sb.from('pilotos').select('*, profiles(nombre,email)').order('nombre');
+  if(!data||!data.length){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Sin pilotos registrados</div>';
+    return;
+  }
+  grid.innerHTML=data.map((p,i)=>{
+    const tieneGPS=p.lat&&p.lng;
+    const avCls=avColors[i%avColors.length];
+    const init=p.nombre.split(' ').map(w=>w[0]).join('').slice(0,2);
+    let tiempoLabel='Sin conexión';
+    let tiempoColor='var(--muted)';
+    if(p.ubicacion_at){
+      const mins=Math.floor((Date.now()-new Date(p.ubicacion_at).getTime())/60000);
+      if(mins<2){tiempoLabel='Ahora mismo';tiempoColor='var(--green)';}
+      else if(mins<10){tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--yellow)';}
+      else{tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--red)';}
+    }
+    const mapsUrl=tieneGPS?`https://www.google.com/maps?q=${p.lat},${p.lng}`:'';
+    return `<div class="gps-card ${tieneGPS?'gps-active':'gps-offline'}">
+      <div class="gps-card-head">
+        <div class="pav ${avCls}">${init}</div>
+        <div>
+          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
+          <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.disponible?'Disponible':'Ocupado'}</div>
+        </div>
+        <div style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:${tieneGPS?'var(--green)':'var(--muted)'};${tieneGPS?'box-shadow:0 0 6px rgba(34,197,94,.5)':''}"></div>
+      </div>
+      <div class="gps-card-body">
+        ${tieneGPS
+          ?`<div class="gps-coord">Lat: ${parseFloat(p.lat).toFixed(6)}<br>Lng: ${parseFloat(p.lng).toFixed(6)}</div>`
+          :'<div class="gps-coord" style="color:var(--muted)">Sin coordenadas disponibles</div>'}
+        <div class="gps-time" style="color:${tiempoColor}">🕐 ${tiempoLabel}</div>
+        ${tieneGPS
+          ?`<a class="gps-map-btn" href="${mapsUrl}" target="_blank">🗺 Ver en Google Maps</a>`
+          :`<div class="gps-map-btn off">Sin ubicación activa</div>`}
+      </div>
+    </div>`;
+  }).join('');
+  // Reset countdown
+  gpsCountdownVal=60;
+}
+
+function iniciarGPSCountdown(){
+  if(gpsCountdownTimer)clearInterval(gpsCountdownTimer);
+  if(gpsRefreshTimer)clearInterval(gpsRefreshTimer);
+  gpsCountdownVal=60;
+  gpsCountdownTimer=setInterval(()=>{
+    gpsCountdownVal--;
+    const el=document.getElementById('gps-countdown');
+    if(el)el.textContent=gpsCountdownVal;
+    if(gpsCountdownVal<=0){gpsCountdownVal=60;actualizarGPS();}
+  },1000);
 }
 
 // ── UTILS ─────────────────────────────────────────
