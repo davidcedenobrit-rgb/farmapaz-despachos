@@ -959,12 +959,11 @@ async function crearUsuario() {
   btn.disabled = true; btn.textContent = 'Creando...';
 
   try {
-    const { data: { session } } = await sb.auth.getSession();
     const res = await fetch(EDGE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + session.access_token,
+        'x-monitor-key': 'navi-farmapaz-monitor-2026',
       },
       body: JSON.stringify({ email, password: pass, nombre, rol })
     });
