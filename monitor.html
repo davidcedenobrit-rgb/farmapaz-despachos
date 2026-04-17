@@ -227,6 +227,30 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
 .gps-update-info{text-align:center;padding:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);}
 .countdown{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--orange);}
 
+.usr-grid{display:grid;grid-template-columns:320px 1fr;gap:0;flex:1;overflow:hidden;}
+.usr-form{background:var(--bg2);border-right:1px solid var(--border);padding:24px;overflow-y:auto;}
+.usr-form-title{font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;margin-bottom:20px;}
+.usr-list{overflow-y:auto;padding:20px;}
+.usr-list-title{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px;}
+.usr-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+.usr-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.usr-av.monitor{background:#1a3a5c;color:#60a5fa;}
+.usr-av.call_center{background:#1a3a1a;color:#4ade80;}
+.usr-av.piloto{background:#3a2a0a;color:#fbbf24;}
+.usr-info{flex:1;}
+.usr-name{font-size:14px;font-weight:700;}
+.usr-email{font-size:11px;color:var(--muted2);margin-top:2px;}
+.usr-rol-badge{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-top:5px;display:inline-block;}
+.rb-monitor{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3);}
+.rb-call_center{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.3);}
+.rb-piloto{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.3);}
+.usr-toggle{background:none;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted2);}
+.usr-toggle:hover{border-color:var(--red);color:var(--red);}
+.form-ok-msg{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#4ade80;margin-bottom:14px;display:none;}
+.form-err-msg{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#f87171;margin-bottom:14px;display:none;}
+.rol-select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-family:"Inter",sans-serif;font-size:13px;outline:none;appearance:none;cursor:pointer;}
+.rol-select:focus{border-color:var(--orange);}
+
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 20px;font-size:12px;font-weight:600;z-index:900;transition:transform .3s;white-space:nowrap;pointer-events:none;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:rgba(34,197,94,.5);color:#4ade80;}
@@ -243,8 +267,8 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
   <div class="tabs">
     <button class="tab on" onclick="setTab('monitor',this)">📋 Monitor</button>
     <button class="tab" onclick="setTab('reportes',this)">📊 Reportes</button>
-    <button class="tab" onclick="setTab('usuarios',this)">👥 Usuarios</button>
     <button class="tab" onclick="setTab('gps',this)">📍 GPS Pilotos</button>
+    <button class="tab" onclick="setTab('usuarios',this)">👥 Usuarios</button>
   </div>
   <div class="tb-right">
     <div class="live-badge"><div class="live-dot"></div>EN VIVO</div>
@@ -347,7 +371,7 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
     <div class="usr-form">
       <div class="usr-form-title">👤 Nuevo Usuario</div>
       <div id="u-err" class="form-err-msg"></div>
-      <div id="u-ok"  class="form-ok-msg"></div>
+      <div id="u-ok" class="form-ok-msg"></div>
       <div class="frow"><label class="flbl">Nombre completo</label><input class="finp" id="u-nombre" placeholder="Ej: María González"></div>
       <div class="frow"><label class="flbl">Correo electrónico</label><input class="finp" id="u-email" type="email" placeholder="usuario@farmapaz.com"></div>
       <div class="frow"><label class="flbl">Contraseña</label><input class="finp" id="u-pass" type="password" placeholder="Mínimo 8 caracteres"></div>
@@ -372,27 +396,9 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
     </div>
     <div class="usr-list">
       <div class="usr-list-title">Usuarios del sistema</div>
-      <div id="usr-list-body"><div class="usr-empty">Cargando usuarios...</div></div>
+      <div id="usr-list-body"><div style="text-align:center;padding:40px;color:var(--muted)">Cargando...</div></div>
     </div>
   </div>
-</div>
-
-<!-- ═══ VISTA GPS ═══ -->
-<div class="view" id="view-gps">
-  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-    <div>
-      <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">📍 GPS Pilotos en tiempo real</span>
-      <span style="font-size:11px;color:var(--muted2);margin-left:10px;">Actualización automática cada 60 segundos</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:12px;color:var(--muted2);">Próxima actualización: <span class="countdown" id="gps-countdown">60</span>s</span>
-      <button onclick="actualizarGPS()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted2);font-size:12px;cursor:pointer;">↻ Actualizar ahora</button>
-    </div>
-  </div>
-  <div class="gps-grid" id="gps-grid">
-    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando ubicaciones...</div>
-  </div>
-  <div class="gps-update-info">Las ubicaciones se actualizan automáticamente desde el teléfono de cada piloto cada 60 segundos · Farmapaz · Navi Dev</div>
 </div>
 
 <!-- MODALES -->
@@ -474,8 +480,8 @@ function setTab(tab,btn){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('view-'+tab).classList.add('on');
   if(tab==='reportes'&&reportePedidos.length===0)cargarReportes();
-  if(tab==='usuarios')cargarUsuarios();
   if(tab==='gps'){actualizarGPS();iniciarGPSCountdown();}
+  if(tab==='usuarios')cargarUsuarios();
 }
 
 // ── RELOJ ─────────────────────────────────────────
@@ -911,29 +917,29 @@ function exportarExcel(){
 }
 
 // ── USUARIOS ──────────────────────────────────────
-const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/hyper-processor'; // v2026-04-17
+const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/hyper-processor';
 
 async function cargarUsuarios() {
   const { data } = await sb.from('profiles').select('*').order('rol').order('nombre');
   const body = document.getElementById('usr-list-body');
   if (!data || data.length === 0) {
-    body.innerHTML = '<div class="usr-empty">Sin usuarios registrados</div>';
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Sin usuarios</div>';
     return;
   }
   const rolLabel = { monitor: 'Monitor', call_center: 'Call Center', piloto: 'Piloto' };
   body.innerHTML = data.map(u => {
     const init = u.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    return `<div class="usr-card" id="usr-${u.id}" style="${!u.activo ? 'opacity:.5' : ''}">
-      <div class="usr-av ${u.rol}">${init}</div>
-      <div class="usr-info">
-        <div class="usr-name">${u.nombre}</div>
-        <div class="usr-email">${u.email}</div>
-        <div class="usr-rol-badge rb-${u.rol}">${rolLabel[u.rol] || u.rol}</div>
-      </div>
-      <button class="usr-toggle ${!u.activo ? 'inactivo' : ''}" onclick="toggleUsuario('${u.id}',${u.activo})">
-        ${u.activo ? 'Desactivar' : 'Activar'}
-      </button>
-    </div>`;
+    return '<div class="usr-card" style="' + (!u.activo ? 'opacity:.5' : '') + '">' +
+      '<div class="usr-av ' + u.rol + '">' + init + '</div>' +
+      '<div class="usr-info">' +
+        '<div class="usr-name">' + u.nombre + '</div>' +
+        '<div class="usr-email">' + u.email + '</div>' +
+        '<div class="usr-rol-badge rb-' + u.rol + '">' + (rolLabel[u.rol] || u.rol) + '</div>' +
+      '</div>' +
+      '<button class="usr-toggle" onclick="toggleUsuario('' + u.id + '',' + u.activo + ')">' +
+        (u.activo ? 'Desactivar' : 'Activar') +
+      '</button>' +
+    '</div>';
   }).join('');
 }
 
@@ -961,11 +967,7 @@ async function crearUsuario() {
   try {
     const res = await fetch(EDGE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': 'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti',
-        'Authorization': 'Bearer sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pass, nombre, rol, monitorKey: 'navimonitor2026' })
     });
     const result = await res.json();
@@ -973,15 +975,17 @@ async function crearUsuario() {
       errEl.textContent = result.error || 'Error al crear usuario';
       errEl.style.display = 'block';
     } else {
-      okEl.textContent = `✅ ${nombre} creado correctamente como ${rol}`;
+      okEl.textContent = '✅ ' + nombre + ' creado correctamente como ' + rol;
       okEl.style.display = 'block';
-      ['u-nombre','u-email','u-pass'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('u-nombre').value = '';
+      document.getElementById('u-email').value = '';
+      document.getElementById('u-pass').value = '';
       document.getElementById('u-rol').value = '';
-      await cargarUsuarios();
-      setTimeout(() => okEl.style.display = 'none', 4000);
+      cargarUsuarios();
+      setTimeout(function(){ okEl.style.display = 'none'; }, 4000);
     }
   } catch(e) {
-    errEl.textContent = 'Error de conexión. Verifica que la Edge Function esté desplegada.';
+    errEl.textContent = 'Error de conexión: ' + e.message;
     errEl.style.display = 'block';
   }
 
@@ -989,10 +993,11 @@ async function crearUsuario() {
 }
 
 async function toggleUsuario(id, activo) {
-  const { error } = await sb.from('profiles').update({ activo: !activo }).eq('id', id);
-  if (error) { toast('Error al actualizar', 'err'); return; }
+  var nuevoEstado = !activo;
+  var resp = await sb.from('profiles').update({ activo: nuevoEstado }).eq('id', id);
+  if (resp.error) { toast('Error al actualizar', 'err'); return; }
   toast(activo ? 'Usuario desactivado' : 'Usuario activado ✅', 'ok');
-  await cargarUsuarios();
+  cargarUsuarios();
 }
 
 // ── GPS PILOTOS ───────────────────────────────────
