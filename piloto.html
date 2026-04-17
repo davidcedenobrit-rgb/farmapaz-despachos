@@ -2,375 +2,166 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Farmapaz · Monitor</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Farmapaz · Piloto</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
-  --bg:#0a0c12;--bg2:#0f1119;--bg3:#141720;--bg4:#1a1f2e;
-  --border:#1e2436;--border2:#252d40;
+  --bg:#080a10;--bg2:#0f1119;--bg3:#141720;--border:#1e2436;--border2:#252d40;
   --text:#d8dff0;--muted:#4a5270;--muted2:#7880a0;
-  --green:#22c55e;--yellow:#eab308;--orange:#f97316;--red:#ef4444;--blue:#3b82f6;
+  --green:#22c55e;--orange:#f97316;--red:#ef4444;--yellow:#eab308;
 }
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;min-height:100vh;display:flex;flex-direction:column;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;overflow-x:hidden;}
 
-/* ── TOPBAR ── */
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;height:48px;padding:0 16px;gap:10px;flex-shrink:0;}
-.tb-brand{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;}
-.tb-brand span{color:var(--orange);}
-.tb-sep{color:var(--border2);font-size:18px;}
+/* ── LOGIN ── */
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 30% 40%,#0d1f3a,var(--bg));}
+.login-logo{text-align:center;margin-bottom:32px;}
+.login-pill{display:inline-block;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:20px;padding:4px 14px;font-size:10px;font-weight:700;letter-spacing:3px;color:#fb923c;text-transform:uppercase;margin-bottom:12px;}
+.login-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;}
+.login-sub{font-size:12px;color:var(--muted2);margin-top:6px;}
+.lbox{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:360px;}
+.lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);display:block;margin-bottom:8px;}
+.linp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px;color:var(--text);font-family:'Inter',sans-serif;font-size:15px;outline:none;margin-bottom:16px;transition:border-color .2s;}
+.linp:focus{border-color:var(--orange);}
+.lerr{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:14px;display:none;}
+.lbtn{width:100%;background:linear-gradient(135deg,#c45a0a,#e07020);border:none;border-radius:12px;padding:16px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;}
 
-/* TABS */
-.tabs{display:flex;gap:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:3px;}
-.tab{background:none;border:none;border-radius:6px;padding:5px 16px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted2);transition:all .15s;}
-.tab.on{background:var(--bg4);color:var(--text);}
+/* ── APP ── */
+#app{display:none;flex-direction:column;min-height:100vh;}
 
-.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-.live-badge{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#4ade80;}
-.live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.tb-clock{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted2);min-width:72px;text-align:right;}
-.tb-user{font-size:12px;color:var(--muted2);}
-.logout-btn{background:none;border:1px solid var(--border2);border-radius:6px;padding:5px 12px;color:var(--muted2);font-size:12px;cursor:pointer;}
-.logout-btn:hover{color:var(--red);border-color:var(--red);}
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.tb-left{}
+.tb-name{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;}
+.tb-role{font-size:11px;color:var(--muted2);margin-top:1px;}
 
-/* ── VIEWS ── */
-.view{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.view.on{display:flex;}
+/* GPS STATUS */
+.gps-status{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;cursor:pointer;-webkit-tap-highlight-color:rgba(249,115,22,.2);}
+.gps-status:active{background:rgba(249,115,22,.1);}
+.gps-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+.gps-dot.active{background:var(--green);animation:gpsblink 2s infinite;}
+.gps-dot.error{background:var(--red);}
+@keyframes gpsblink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+.gps-txt{font-size:11px;font-weight:600;color:var(--muted2);}
+.gps-txt.active{color:var(--green);}
+.gps-txt.error{color:var(--red);}
 
-/* ── MONITOR VIEW ── */
-.stats-row{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
-.stat-card{flex:1;padding:14px 18px;border-right:1px solid var(--border);}
-.stat-card:last-child{border-right:none;}
-.sc-lbl{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
-.sc-val{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;line-height:1;margin-bottom:3px;}
-.sc-sub{font-size:11px;color:var(--muted2);}
-.sc-val.white{color:var(--text);}.sc-val.orange{color:var(--orange);}.sc-val.green{color:var(--green);}.sc-val.red{color:var(--red);}
+/* CONTENT */
+.content{padding:16px;flex:1;}
 
-.mon-filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
-.fbtn{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted2);transition:all .15s;display:flex;align-items:center;gap:6px;}
-.fbtn.on{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:var(--orange);}
-.fcnt{background:var(--border2);border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700;}
-.fbtn.on .fcnt{background:rgba(249,115,22,.2);color:var(--orange);}
-.alert-pill{display:flex;align-items:center;gap:5px;}
-.alert-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:blink 1.2s infinite;}
-.f-right{margin-left:auto;}
-.new-btn{background:linear-gradient(135deg,#c45a0a,#e07020);border:none;border-radius:7px;padding:7px 16px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
-.new-btn:hover{opacity:.85;}
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-ico{font-size:48px;display:block;margin-bottom:14px;}
+.empty-txt{font-size:14px;line-height:1.5;}
 
-.mon-body{display:flex;flex:1;overflow:hidden;}
-.main-tbl{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
-.tbl-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.tbl-title{font-weight:600;}
-.tbl-count{font-size:11px;color:var(--muted2);}
+/* PEDIDO CARD */
+.pedido-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.pc-head{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;}
+.pc-num{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--orange);}
+.pc-badge{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px;}
+.b-asignado{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.3);}
+.b-en_ruta{background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.3);}
+.b-entregado{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
 
-table.tbl{width:100%;border-collapse:collapse;}
-table.tbl thead th{background:var(--bg2);padding:9px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:10;}
-table.tbl tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
-table.tbl tbody tr:hover{background:var(--bg2);}
-table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
-.td-mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
-.td-name{font-weight:600;font-size:13px;}
-.td-dir{font-size:11px;color:var(--muted2);margin-top:2px;}
+.pc-body{padding:16px 18px;}
+.pc-cliente{font-size:17px;font-weight:700;margin-bottom:6px;}
+.pc-dir{font-size:13px;color:var(--muted2);line-height:1.5;display:flex;gap:6px;margin-bottom:12px;}
+.pc-dir-ico{flex-shrink:0;margin-top:2px;}
+.pc-desc{font-size:12px;color:var(--muted2);background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5;border-left:3px solid var(--border2);}
+.pc-tel{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.tel-btn{flex:1;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:11px;color:#4ade80;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;}
+.maps-btn{flex:1;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:11px;color:#60a5fa;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;}
 
-.sbadge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;white-space:nowrap;}
-.sb-espera  {background:rgba(74,82,112,.2);color:#8890b8;border:1px solid rgba(74,82,112,.3);}
-.sb-asignado{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.3);}
-.sb-ruta    {background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.3);}
-.sb-alerta  {background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.5);animation:pulse .8s infinite;}
-@keyframes pulse{0%,100%{border-color:rgba(239,68,68,.4)}50%{border-color:rgba(239,68,68,1)}}
-.sb-entregado{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
-.sb-cerrado {background:rgba(59,130,246,.08);color:#60a5fa;border:1px solid rgba(59,130,246,.2);opacity:.7;}
+/* ACTION BTNs GRANDES */
+.action-area{display:flex;flex-direction:column;gap:10px;}
+.action-btn{width:100%;border:none;border-radius:14px;padding:18px;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:10px;}
+.action-btn:active{opacity:.8;transform:scale(.98);}
+.btn-salir   {background:linear-gradient(135deg,#c45a0a,#f97316);color:#fff;}
+.btn-entregar{background:linear-gradient(135deg,#166534,#22c55e);color:#fff;}
+.btn-disabled{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);}
 
-.pilot-chip{display:flex;align-items:center;gap:7px;}
-.pav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
-.pav-0{background:#1a3a5c;color:#60a5fa;}.pav-1{background:#1a3a1a;color:#4ade80;}.pav-2{background:#3a1a1a;color:#f87171;}.pav-3{background:#2a1a3a;color:#c084fc;}.pav-4{background:#3a2a0a;color:#fbbf24;}
+/* GPS INFO */
+.gps-info{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--muted2);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.gps-coords{font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted2);}
 
-.td-tiempo{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;}
-.t-alerta{color:var(--red);}.t-warn{color:var(--yellow);}.t-ok{color:var(--muted2);}
-
-.gps-btn{background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted2);text-decoration:none;white-space:nowrap;display:inline-block;}
-.gps-btn.live{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#4ade80;}
-.no-gps{color:var(--muted);font-size:11px;}
-
-.act-btn{background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted2);white-space:nowrap;}
-.act-asignar{background:rgba(234,179,8,.08);border-color:rgba(234,179,8,.3);color:#eab308;}
-.act-ruta   {background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.3);color:#f97316;}
-.act-entreg {background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#22c55e;}
-.act-cerrar {background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.3);color:#60a5fa;}
-
-/* SIDEBAR */
-.sidebar{width:220px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
-.sb-sec{padding:14px;}
-.sb-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
-.sb-divider{height:1px;background:var(--border);}
-.alert-item{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px;margin-bottom:8px;}
-.ai-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);}
-.ai-name{font-size:12px;font-weight:700;margin:3px 0;}
-.ai-time{font-size:10px;color:var(--red);font-weight:600;}
-.ai-call{background:none;border:1px solid rgba(239,68,68,.3);border-radius:5px;padding:4px 8px;font-size:10px;font-weight:600;color:#f87171;cursor:pointer;margin-top:6px;display:block;width:100%;text-align:center;}
-.pilot-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);}
-.pilot-row:last-child{border-bottom:none;}
-.pr-info{flex:1;}
-.pr-name{font-size:12px;font-weight:600;}
-.pr-status{font-size:10px;color:var(--muted2);margin-top:1px;}
-.pr-status.alert{color:var(--red);}.pr-status.ruta{color:var(--orange);}.pr-status.ok{color:var(--green);}
-.pr-cnt{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--muted2);}
+/* TIEMPO */
+.pc-tiempo{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+.tiempo-badge{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 12px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;}
+.tiempo-label{font-size:11px;color:var(--muted2);}
 
 /* FOOTER */
-.app-footer{background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:30px;flex-shrink:0;}
-.ft-left{display:flex;align-items:center;gap:8px;}
-.ft-dot{width:5px;height:5px;border-radius:50%;background:#22c55e;animation:blink 2s infinite;}
-.ft-txt{font-size:10px;color:var(--muted2);}
-.ft-right{font-size:10px;color:var(--muted);}
+.footer{background:var(--bg2);border-top:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;}
+.footer-txt{font-size:10px;color:var(--muted);}
+.logout-btn{background:none;border:none;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;padding:4px 0;}
 
-/* ── REPORTES VIEW ── */
-.rep-topbar{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;}
-.fp-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 13px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted2);}
-.fp-btn.on{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:var(--orange);}
-.date-inp{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;}
-.date-inp:focus{border-color:var(--orange);}
-.apply-btn{background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:6px 13px;color:var(--muted2);font-size:12px;cursor:pointer;}
-.rep-right{margin-left:auto;}
-.xlsx-btn{background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:6px;padding:7px 16px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;}
-.xlsx-btn:disabled{opacity:.4;cursor:not-allowed;}
-.rep-body{overflow-y:auto;flex:1;padding:20px;}
-.rep-info{font-size:11px;color:var(--muted2);}
-
-/* KPIs */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px;}
-.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
-.kpi-lbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
-.kpi-val{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;line-height:1;margin-bottom:3px;}
-.kpi-sub{font-size:11px;color:var(--muted2);}
-.kpi-val.white{color:var(--text);}.kpi-val.green{color:var(--green);}.kpi-val.orange{color:var(--orange);}.kpi-val.red{color:var(--red);}.kpi-val.blue{color:var(--blue);}
-
-.rep-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-.rep-section{margin-bottom:20px;}
-.rep-sec-title{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text);}
-
-/* Chart */
-.chart-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;}
-.chart-bars{display:flex;align-items:flex-end;gap:5px;height:110px;margin-bottom:8px;}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
-.bar-fill{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#f97316,#c45a0a);min-height:3px;}
-.bar-val{font-size:9px;color:var(--muted2);font-family:'Rajdhani',sans-serif;}
-.bar-lbl{font-size:9px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;max-width:100%;}
-
-/* Tables */
-.data-tbl{width:100%;border-collapse:collapse;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-.data-tbl thead th{background:var(--bg3);padding:9px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
-.data-tbl tbody tr{border-bottom:1px solid var(--border);}
-.data-tbl tbody tr:last-child{border-bottom:none;}
-.data-tbl tbody tr:hover{background:var(--bg3);}
-.data-tbl tbody td{padding:9px 14px;font-size:12px;}
-.badge-ok  {background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
-.badge-warn{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
-.badge-red {background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
-
-/* ── MODALES ── */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
-.overlay.open{display:flex;}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:440px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.8);animation:pop .18s ease;}
-@keyframes pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
-.modal h3{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;margin-bottom:20px;}
-.frow{margin-bottom:14px;}
-.flbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);display:block;margin-bottom:7px;}
-.finp,.fsel,.ftxt{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
-.fsel{appearance:none;cursor:pointer;}
-.ftxt{resize:vertical;min-height:70px;}
-.finp:focus,.fsel:focus,.ftxt:focus{border-color:var(--orange);}
-.finp:disabled{opacity:.5;}
-.mact{display:flex;gap:8px;margin-top:18px;}
-.mok{flex:1;background:linear-gradient(135deg,#c45a0a,#e07020);border:none;border-radius:8px;padding:11px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;cursor:pointer;}
-.mcancel{background:none;border:1px solid var(--border2);border-radius:8px;padding:11px 16px;color:var(--muted2);font-size:12px;cursor:pointer;}
-
-.usr-empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
-.gps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:20px;}
-.gps-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.gps-card-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.gps-card-body{padding:14px 16px;}
-.gps-active{border-color:rgba(34,197,94,.3);box-shadow:0 0 14px rgba(34,197,94,.1);}
-.gps-offline{opacity:.6;}
-.gps-coord{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-bottom:10px;line-height:1.6;}
-.gps-time{font-size:11px;color:var(--muted2);margin-bottom:12px;}
-.gps-map-btn{display:block;width:100%;background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;letter-spacing:.5px;}
-.gps-map-btn.off{background:var(--bg3);color:var(--muted);border:1px solid var(--border2);}
-.gps-update-info{text-align:center;padding:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);}
-.countdown{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--orange);}
-
-
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 20px;font-size:12px;font-weight:600;z-index:900;transition:transform .3s;white-space:nowrap;pointer-events:none;}
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap;text-align:center;max-width:90vw;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:rgba(34,197,94,.5);color:#4ade80;}
 #toast.err{border-color:rgba(239,68,68,.5);color:#f87171;}
-.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;}
+#toast.info{border-color:rgba(249,115,22,.4);color:#fb923c;}
+
+.loader{text-align:center;padding:40px;color:var(--muted);}
+.spin{display:inline-block;width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:rot .7s linear infinite;}
 @keyframes rot{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="tb-brand">FARMAPAZ <span>·</span></div>
-  <div class="tabs">
-    <button class="tab on" onclick="setTab('monitor',this)">📋 Monitor</button>
-    <button class="tab" onclick="setTab('reportes',this)">📊 Reportes</button>
-    <button class="tab" onclick="setTab('gps',this)">📍 GPS Pilotos</button>
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">
+    <div class="login-pill">Navi Group</div>
+    <div class="login-title">Farmapaz Delivery</div>
+    <div class="login-sub">Portal del Piloto</div>
   </div>
-  <div class="tb-right">
-    <div class="live-badge"><div class="live-dot"></div>EN VIVO</div>
-    <div class="tb-clock" id="reloj">--:--:--</div>
-    <span class="tb-user" id="tb-user"></span>
-    <button class="logout-btn" onclick="doLogout()">Salir</button>
+  <div class="lbox">
+    <div id="lerr" class="lerr"></div>
+    <label class="lbl">Correo</label>
+    <input class="linp" type="email" id="lemail" placeholder="piloto.a@farmapaz.com" autocomplete="email">
+    <label class="lbl">Contraseña</label>
+    <input class="linp" type="password" id="lpass" placeholder="••••••••" autocomplete="current-password">
+    <button class="lbtn" onclick="doLogin()">ENTRAR</button>
   </div>
 </div>
 
-<!-- ═══ VISTA MONITOR ═══ -->
-<div class="view on" id="view-monitor">
+<!-- APP -->
+<div id="app">
 
-  <div class="stats-row">
-    <div class="stat-card"><div class="sc-lbl">En espera</div><div class="sc-val white" id="st-espera">0</div><div class="sc-sub" id="st-espera-sub">sin piloto</div></div>
-    <div class="stat-card"><div class="sc-lbl">En ruta ahora</div><div class="sc-val orange" id="st-ruta">0</div><div class="sc-sub" id="st-ruta-sub">0 alertas</div></div>
-    <div class="stat-card"><div class="sc-lbl">Entregados hoy</div><div class="sc-val green" id="st-entregados">0</div><div class="sc-sub" id="st-prom">prom. — min</div></div>
-    <div class="stat-card"><div class="sc-lbl">Alertas activas</div><div class="sc-val red" id="st-alertas">0</div><div class="sc-sub">+5 min sin resp.</div></div>
-  </div>
-
-  <div class="mon-filters">
-    <button class="fbtn on" onclick="setFilter('todos',this)">Todos <span class="fcnt" id="f-todos">0</span></button>
-    <button class="fbtn" onclick="setFilter('pendiente',this)">En espera <span class="fcnt" id="f-pendiente">0</span></button>
-    <button class="fbtn" onclick="setFilter('en_ruta',this)">En ruta <span class="fcnt" id="f-ruta">0</span></button>
-    <button class="fbtn" onclick="setFilter('entregado',this)">Entregados <span class="fcnt" id="f-entregado">0</span></button>
-    <button class="fbtn" id="f-alert-btn" onclick="setFilter('alerta',this)">
-      <span class="alert-pill"><span class="alert-dot"></span><span id="f-alert-cnt">0</span> Alertas</span>
-    </button>
-    <div class="f-right"><button class="new-btn" onclick="abrirModal('m-nuevo')">+ Nuevo Pedido</button></div>
-  </div>
-
-  <div class="mon-body">
-    <div class="main-tbl">
-      <div class="tbl-head">
-        <span class="tbl-title">Despachos activos</span>
-        <span class="tbl-count" id="tbl-count"></span>
-      </div>
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>PEDIDO</th>
-            <th>CLIENTE / DIRECCIÓN</th>
-            <th>ESTADO</th>
-            <th>PILOTO</th>
-            <th>TIEMPO</th>
-            <th>GPS</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tbl-body">
-          <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando...</td></tr>
-        </tbody>
-      </table>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-name" id="tb-name">Piloto</div>
+      <div class="tb-role">🏍️ Delivery · Farmapaz</div>
     </div>
-
-    <div class="sidebar">
-      <div class="sb-sec">
-        <div class="sb-title"><span>🔴 Alertas</span></div>
-        <div id="sb-alertas"><div style="font-size:11px;color:var(--muted)">Sin alertas</div></div>
-      </div>
-      <div class="sb-divider"></div>
-      <div class="sb-sec">
-        <div class="sb-title"><span>Pilotos</span><span id="sb-pilotos-cnt" style="font-size:10px;color:var(--muted2);text-transform:none;letter-spacing:0;font-weight:400;"></span></div>
-        <div id="sb-pilotos"><div style="font-size:11px;color:var(--muted)">Sin pilotos</div></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="notif-btn" onclick="activarNotificaciones()" style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:6px 10px;color:#eab308;font-size:11px;font-weight:700;cursor:pointer;">🔔 Notif</button>
+      <div class="gps-status" id="gps-status" onclick="activarGPS()">
+        <div class="gps-dot" id="gps-dot"></div>
+        <span class="gps-txt" id="gps-txt">GPS apagado</span>
       </div>
     </div>
   </div>
 
-  <div class="app-footer">
-    <div class="ft-left"><div class="ft-dot"></div><span class="ft-txt">SISTEMA EN VIVO · Farmapaz · Navi Dev</span></div>
-    <div class="ft-right">Auto-actualización cada 15 seg</div>
+  <!-- CONTENT -->
+  <div class="content">
+    <div id="pedidos-wrap">
+      <div class="loader"><div class="spin"></div></div>
+    </div>
   </div>
-</div>
 
-<!-- ═══ VISTA REPORTES ═══ -->
-<div class="view" id="view-reportes">
-  <div class="rep-topbar">
-    <button class="fp-btn" onclick="setPeriodo('hoy',this)">Hoy</button>
-    <button class="fp-btn on" onclick="setPeriodo('semana',this)">Esta semana</button>
-    <button class="fp-btn" onclick="setPeriodo('mes',this)">Este mes</button>
-    <button class="fp-btn" onclick="setPeriodo('custom',this)">Personalizado</button>
-    <div id="date-range" style="display:none;display:flex;align-items:center;gap:6px;">
-      <input class="date-inp" type="date" id="f-desde">
-      <span style="color:var(--muted2)">→</span>
-      <input class="date-inp" type="date" id="f-hasta">
-      <button class="apply-btn" onclick="cargarReportes()">Aplicar</button>
-    </div>
-    <span class="rep-info" id="rep-info"></span>
-    <div class="rep-right">
-      <button class="xlsx-btn" id="xlsx-btn" onclick="exportarExcel()" disabled>📊 Descargar Excel</button>
-    </div>
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-txt" id="gps-coords-footer">Sin ubicación activa</div>
+    <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
   </div>
-  <div class="rep-body" id="rep-body">
-    <div style="text-align:center;padding:60px;color:var(--muted)"><span class="spin"></span> Cargando reportes...</div>
-  </div>
-</div>
 
-<!-- ═══ VISTA GPS ═══ -->
-<div class="view" id="view-gps">
-  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-    <div>
-      <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">📍 GPS Pilotos en tiempo real</span>
-      <span style="font-size:11px;color:var(--muted2);margin-left:10px;">Actualización cada 60 segundos</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:12px;color:var(--muted2);">Próxima: <span class="countdown" id="gps-countdown">60</span>s</span>
-      <button onclick="actualizarGPS()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted2);font-size:12px;cursor:pointer;">↻ Actualizar</button>
-    </div>
-  </div>
-  <div class="gps-grid" id="gps-grid">
-    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando ubicaciones...</div>
-  </div>
-  <div style="text-align:center;padding:10px;font-size:10px;color:var(--muted);border-top:1px solid var(--border);">Ubicaciones actualizadas automáticamente desde el teléfono del piloto · Farmapaz · Navi Dev</div>
-</div>
-
-<!-- MODALES -->
-<div class="overlay" id="m-nuevo">
-  <div class="modal">
-    <h3>📋 Nuevo Pedido</h3>
-    <div class="frow"><label class="flbl">N° de Factura</label><input class="finp" id="n-factura" placeholder="Ej: 0041" maxlength="30"></div>
-    <div class="frow"><label class="flbl">Nombre del cliente</label><input class="finp" id="n-nombre" placeholder="Ej: María González"></div>
-    <div class="frow"><label class="flbl">Teléfono</label><input class="finp" id="n-tel" placeholder="+58412-0000000"></div>
-    <div class="frow"><label class="flbl">Dirección de entrega</label><input class="finp" id="n-dir" placeholder="Av. Principal, Casa #10..."></div>
-    <div class="frow"><label class="flbl">Productos</label><textarea class="ftxt" id="n-desc" placeholder="Ej: 2x Paracetamol 500mg..."></textarea></div>
-    <div class="mact">
-      <button class="mcancel" onclick="cerrarModal('m-nuevo')">Cancelar</button>
-      <button class="mok" onclick="crearPedido()">Crear Pedido</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="m-asignar">
-  <div class="modal">
-    <h3>🏍️ Asignar Piloto</h3>
-    <div class="frow"><label class="flbl">Pedido</label><input class="finp" id="a-num" disabled></div>
-    <div class="frow"><label class="flbl">Piloto</label><select class="fsel" id="a-piloto"><option value="">-- Selecciona --</option></select></div>
-    <div class="mact">
-      <button class="mcancel" onclick="cerrarModal('m-asignar')">Cancelar</button>
-      <button class="mok" onclick="confirmarAsignacion()">Asignar</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="m-nota">
-  <div class="modal">
-    <h3>📝 Nota del Monitor</h3>
-    <div class="frow"><label class="flbl">Observación</label><textarea class="ftxt" id="nota-txt" placeholder="Nota interna..."></textarea></div>
-    <div class="mact">
-      <button class="mcancel" onclick="cerrarModal('m-nota')">Cancelar</button>
-      <button class="mok" onclick="guardarNota()">Guardar</button>
-    </div>
-  </div>
 </div>
 
 <div id="toast"></div>
@@ -393,545 +184,458 @@ const sb=supabase.createClient(
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
 );
 
-let usuario=null,perfil=null,selId=null;
-let pedidos=[],pilotos=[],reportePedidos=[];
-let filtro='todos',periodo='semana';
-let autoTimer=null,relojTimer=null;
-const avColors=['pav-0','pav-1','pav-2','pav-3','pav-4'];
+let usuario=null, perfil=null, piloto=null;
+let pedidos=[], miLat=null, miLng=null;
+let gpsWatchId=null, gpsUpdateTimer=null;
+
+// Firebase Push Notifications
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBbsa1G4H9DlJ6GK6aNy4izJSiQ3EWqHK4",
+  authDomain: "farmapaz-despachos.firebaseapp.com",
+  projectId: "farmapaz-despachos",
+  storageBucket: "farmapaz-despachos.firebasestorage.app",
+  messagingSenderId: "3879404311",
+  appId: "1:3879404311:web:5d9ca356a8161d2f24ad52"
+};
+const VAPID_KEY = "BA4oIsqRZ4rUUQCt8rbGDewh7ZQzgr1ky4sfNXETPvjpIbXxAIc2_P_OrANDjJU14IcERtzYUx4rHawjvVGI9nk";
+const NOTIF_URL = "https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint";
+
+async function iniciarPushNotifications() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+
+    const btn = document.getElementById('notif-btn');
+    if (Notification.permission === 'granted') {
+      // Ya tiene permiso — registrar token y actualizar botón
+      await registrarTokenFCM();
+      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
+    } else if (Notification.permission === 'denied') {
+      if (btn) { btn.textContent = '🔕 Bloqueado'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.borderColor = 'rgba(239,68,68,.3)'; btn.style.color = '#f87171'; }
+    }
+    // Si es 'default' el botón queda amarillo para que lo active
+  } catch(err) {
+    console.log('Push init error:', err.message);
+  }
+}
+
+async function activarNotificaciones() {
+  const btn = document.getElementById('notif-btn');
+  try {
+    if (Notification.permission === 'denied') {
+      toast('Notificaciones bloqueadas. Ve a Ajustes del navegador → Permisos del sitio → Notificaciones → Permitir', 'err');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      await registrarTokenFCM();
+      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
+      toast('🔔 Notificaciones activadas ✅', 'ok');
+      return;
+    }
+    // Pedir permiso
+    const permiso = await Notification.requestPermission();
+    if (permiso === 'granted') {
+      await registrarTokenFCM();
+      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
+      toast('🔔 Notificaciones activadas ✅', 'ok');
+    } else {
+      if (btn) { btn.textContent = '🔕 Bloqueado'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.borderColor = 'rgba(239,68,68,.3)'; btn.style.color = '#f87171'; }
+      toast('Ve a Ajustes del navegador → Permitir notificaciones para este sitio', 'err');
+    }
+  } catch(err) {
+    console.log('Error:', err.message);
+  }
+}
+
+async function registrarTokenFCM() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+    const swReg = await navigator.serviceWorker.ready;
+    const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+    if (token && usuario) {
+      await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
+      console.log('FCM token guardado ✅');
+    }
+    messaging.onMessage(function(payload) {
+      sonarAlarma();
+      vibrarTelefono();
+      toast('🔔 ' + (payload.notification?.title || 'Nuevo pedido'), 'info');
+      setTimeout(cargarPedidos, 1000);
+    });
+  } catch(err) {
+    console.log('Error registrando FCM:', err.message);
+  }
+}
+let tiempoTimers={};
+
+// Alerta sonora via Web Audio API (sin dependencias externas)
+function sonarAlarma() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const beep = (freq, start, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    beep(880, 0, 0.15);
+    beep(1100, 0.2, 0.15);
+    beep(880, 0.4, 0.15);
+    beep(1100, 0.6, 0.3);
+  } catch(e) {}
+}
+
+function vibrarTelefono() {
+  if ('vibrate' in navigator) {
+    navigator.vibrate([300, 100, 300, 100, 500]);
+  }
+}
+
+function alertaNuevoPedido(numeroPedido, cliente) {
+  // Sonido + vibración
+  sonarAlarma();
+  vibrarTelefono();
+  // Notificación nativa del navegador si tiene permiso
+  if (Notification.permission === 'granted') {
+    new Notification('🏍️ Nuevo pedido asignado', {
+      body: `#${numeroPedido} · ${cliente}`,
+      icon: '/icon-192.png',
+      vibrate: [300, 100, 300],
+      tag: 'nuevo-pedido',
+      renotify: true
+    });
+  }
+  toast(`🔔 Nuevo pedido: #${numeroPedido} · ${cliente}`, 'info');
+}
+
+
 
 // ── AUTH ──────────────────────────────────────────
-(async()=>{
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session){window.location.href='/';return;}
-  const {data:prf}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
-  if(!prf||prf.rol!=='monitor'){window.location.href='/';return;}
-  usuario=session.user;perfil=prf;
-  document.getElementById('tb-user').textContent=prf.nombre;
-  iniciarReloj();
-  await cargarPilotos();
+async function doLogin(){
+  const email=document.getElementById('lemail').value.trim();
+  const pass=document.getElementById('lpass').value;
+  const errEl=document.getElementById('lerr');
+  errEl.style.display='none';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){errEl.textContent='Credenciales incorrectas.';errEl.style.display='block';return;}
+  await iniciarApp(data.user);
+}
+document.getElementById('lpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+async function iniciarApp(user){
+  usuario=user;
+  const {data:prf}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(!prf){
+    const e=document.getElementById('lerr');
+    e.textContent='Sin perfil. Contacta al administrador.';
+    e.style.display='block';
+    await sb.auth.signOut();return;
+  }
+  if(prf.rol!=='piloto'){
+    const e=document.getElementById('lerr');
+    e.textContent='Este portal es solo para pilotos.';
+    e.style.display='block';
+    await sb.auth.signOut();return;
+  }
+  perfil=prf;
+  document.getElementById('tb-name').textContent=prf.nombre;
+
+  // Obtener registro del piloto
+  const {data:pil}=await sb.from('pilotos').select('*').eq('profile_id',user.id).single();
+  piloto=pil;
+
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+
   await cargarPedidos();
   suscribirRealtime();
-  autoTimer=setInterval(cargarPedidos,15000);
-  // Cargar reportes en background
-  cargarReportes();
-})();
-
-async function doLogout(){await sb.auth.signOut();window.location.href='/';}
-
-// ── TABS ──────────────────────────────────────────
-function setTab(tab,btn){
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.getElementById('view-'+tab).classList.add('on');
-  if(tab==='reportes'&&reportePedidos.length===0)cargarReportes();
-  if(tab==='gps'){actualizarGPS();iniciarGPSCountdown();}
+  // Activar GPS automáticamente al entrar
+  setTimeout(activarGPS, 1000);
+  // Pedir permiso de notificaciones
+  setTimeout(iniciarPushNotifications, 2000);
 }
 
-// ── RELOJ ─────────────────────────────────────────
-function iniciarReloj(){
-  const tick=()=>{document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});};
-  tick();relojTimer=setInterval(tick,1000);
+async function doLogout(){
+  detenerGPS();
+  await sb.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  pedidos=[];piloto=null;
 }
 
-// ── PILOTOS ───────────────────────────────────────
-async function cargarPilotos(){
-  const {data}=await sb.from('pilotos').select('*').order('nombre');
-  pilotos=data||[];
-  const sel=document.getElementById('a-piloto');
-  sel.innerHTML='<option value="">-- Selecciona --</option>';
-  pilotos.forEach(p=>{
-    const o=document.createElement('option');
-    o.value=p.id;o.textContent=p.nombre+(p.disponible?' ✅':' 🔴');
-    sel.appendChild(o);
-  });
+// ── GPS ───────────────────────────────────────────
+function activarGPS(){
+  if(!navigator.geolocation){
+    setGPSStatus('error','GPS no disponible');return;
+  }
+  setGPSStatus('buscando','Buscando señal...');
+
+  // iOS Safari requiere getCurrentPosition primero antes de watchPosition
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      miLat=pos.coords.latitude;
+      miLng=pos.coords.longitude;
+      setGPSStatus('active','GPS activo');
+      document.getElementById('gps-coords-footer').textContent=
+        `📍 ${miLat.toFixed(5)}, ${miLng.toFixed(5)}`;
+      guardarUbicacion();
+
+      // Ahora iniciar el watch continuo
+      if(gpsWatchId)navigator.geolocation.clearWatch(gpsWatchId);
+      gpsWatchId=navigator.geolocation.watchPosition(
+        pos=>{
+          miLat=pos.coords.latitude;
+          miLng=pos.coords.longitude;
+          setGPSStatus('active','GPS activo');
+          document.getElementById('gps-coords-footer').textContent=
+            `📍 ${miLat.toFixed(5)}, ${miLng.toFixed(5)}`;
+        },
+        err=>{
+          const msgs={1:'Permiso denegado',2:'Sin señal GPS',3:'Tiempo agotado'};
+          setGPSStatus('error',msgs[err.code]||'Error GPS');
+        },
+        {enableHighAccuracy:true,maximumAge:5000,timeout:20000}
+      );
+    },
+    err=>{
+      const msgs={1:'Permiso denegado — ve a Ajustes > Safari > Ubicación',2:'Sin señal GPS',3:'Tiempo agotado, intenta de nuevo'};
+      setGPSStatus('error',msgs[err.code]||'Error GPS');
+      toast(msgs[err.code]||'Error GPS','err');
+    },
+    {enableHighAccuracy:true,maximumAge:0,timeout:20000}
+  );
+
+  // Guardar en Supabase cada 30 segundos
+  if(gpsUpdateTimer)clearInterval(gpsUpdateTimer);
+  gpsUpdateTimer=setInterval(()=>{
+    if(miLat&&miLng)guardarUbicacion();
+  },60000);
 }
 
-// ── MONITOR ───────────────────────────────────────
+function detenerGPS(){
+  if(gpsWatchId)navigator.geolocation.clearWatch(gpsWatchId);
+  clearInterval(gpsUpdateTimer);
+  gpsWatchId=null;gpsUpdateTimer=null;
+}
+
+async function guardarUbicacion(){
+  if(!miLat||!miLng||!usuario)return;
+  // Actualizar por profile_id del usuario actual
+  await sb.from('pilotos').update({
+    lat:miLat,lng:miLng,ubicacion_at:new Date().toISOString()
+  }).eq('profile_id',usuario.id);
+}
+
+function setGPSStatus(estado,txt){
+  const dot=document.getElementById('gps-dot');
+  const label=document.getElementById('gps-txt');
+  dot.className='gps-dot';
+  label.className='gps-txt';
+  if(estado==='active'){dot.classList.add('active');label.classList.add('active');}
+  else if(estado==='error'){dot.classList.add('error');label.classList.add('error');}
+  label.textContent=txt;
+}
+
+// ── PEDIDOS ───────────────────────────────────────
 async function cargarPedidos(){
+  if(!piloto){renderPedidos([]);return;}
   const hoy=new Date().toISOString().split('T')[0];
-  const {data}=await sb.from('pedidos')
-    .select('*, pilotos(id,nombre,lat,lng,ubicacion_at)')
+  const {data,error}=await sb.from('pedidos')
+    .select('*')
+    .eq('piloto_id',piloto.id)
+    .in('estado',['asignado','en_ruta','entregado'])
     .gte('created_at',hoy+'T00:00:00')
     .order('created_at',{ascending:false});
+  if(error){toast('Error al cargar pedidos','err');return;}
   pedidos=data||[];
-  renderTabla();
-  actualizarStats();
-  renderSidebar();
+  renderPedidos(pedidos);
 }
 
-function esAlerta(p){return p.estado==='en_ruta'&&minutosDesde(p.salida_at||p.assigned_at)>=5;}
-
-function listaFiltrada(){
-  if(filtro==='todos') return pedidos.filter(p=>p.estado!=='cerrado');
-  if(filtro==='alerta') return pedidos.filter(p=>esAlerta(p));
-  if(filtro==='pendiente') return pedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado');
-  return pedidos.filter(p=>p.estado===filtro);
-}
-
-function renderTabla(){
-  const lista=listaFiltrada();
-  actualizarContadores();
-  document.getElementById('tbl-count').textContent=lista.length+' pedidos';
-  const body=document.getElementById('tbl-body');
-  if(!lista.length){body.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">📭 Sin pedidos en este estado</td></tr>`;return;}
-  body.innerHTML=lista.map((p,i)=>rowHTML(p,i)).join('');
-}
-
-function rowHTML(p,i){
-  const alerta=esAlerta(p);
-  const mins=minutosDesde(p.salida_at||p.assigned_at);
-  const pilIdx=pilotos.findIndex(x=>x.id===p.piloto_id);
-  const avCls=avColors[pilIdx>=0?pilIdx%avColors.length:0];
-  const pNom=p.pilotos?.nombre;
-  const pInit=pNom?pNom.split(' ').map(w=>w[0]).join('').slice(0,2):'?';
-
-  let sbCls,sbTxt;
-  if(alerta){sbCls='sb-alerta';sbTxt='⚠ ¡Alerta!';}
-  else if(p.estado==='pendiente'){sbCls='sb-espera';sbTxt='● En espera';}
-  else if(p.estado==='asignado'){sbCls='sb-asignado';sbTxt='● Asignado';}
-  else if(p.estado==='en_ruta'){sbCls='sb-ruta';sbTxt='● En ruta';}
-  else if(p.estado==='entregado'){sbCls='sb-entregado';sbTxt='✓ Entregado';}
-  else{sbCls='sb-cerrado';sbTxt='✓ Cerrado';}
-
-  let tiempoHTML='<span class="t-ok">—</span>';
-  if(p.estado==='en_ruta'||p.estado==='entregado'){
-    const cls=alerta?'t-alerta':mins>3?'t-warn':'t-ok';
-    tiempoHTML=`<span class="td-tiempo ${cls}">${formatTiempo(mins)}</span>`;
-  }
-
-  const pilotoHTML=pNom
-    ?`<div class="pilot-chip"><div class="pav ${avCls}">${pInit}</div><span style="font-size:12px;font-weight:500">${pNom}</span></div>`
-    :`<span style="color:var(--muted);font-size:12px">—</span>`;
-
-  // GPS
-  let gpsHTML='<span class="no-gps">Sin GPS</span>';
-  const pil=p.pilotos;
-  if((p.estado==='en_ruta'||p.estado==='entregado')&&pil?.lat&&pil?.lng){
-    const minsGps=pil.ubicacion_at?minutosDesde(pil.ubicacion_at):null;
-    const timeLabel=minsGps!==null?(minsGps<1?'ahora':minsGps+'m ago'):'';
-    gpsHTML=`<a class="gps-btn live" href="https://www.google.com/maps?q=${pil.lat},${pil.lng}" target="_blank">📍 Ver · ${timeLabel}</a>`;
-  } else if(p.estado==='en_ruta'){
-    gpsHTML='<span style="color:var(--yellow);font-size:11px">⏳ Sin señal</span>';
-  }
-
-  let accion='';
-  if(p.estado==='pendiente') accion=`<button class="act-btn act-asignar" onclick="abrirAsignar('${p.id}','${p.numero_pedido}')">Asignar →</button>`;
-  else if(p.estado==='asignado') accion=`<button class="act-btn act-ruta" onclick="cambiarEstado('${p.id}','en_ruta')">En ruta →</button>`;
-  else if(p.estado==='en_ruta'&&alerta) accion=`<button class="act-btn act-entreg" onclick="cambiarEstado('${p.id}','entregado')">✓ Entregado</button>`;
-  else if(p.estado==='entregado') accion=`<button class="act-btn act-cerrar" onclick="cambiarEstado('${p.id}','cerrado')">Cerrar</button>`;
-
-  return `<tr>
-    <td><div class="td-mono" style="color:#60a5fa">${p.numero_pedido||'—'}</div></td>
-    <td><div class="td-name">${p.cliente_nombre}</div><div class="td-dir">${p.direccion}</div></td>
-    <td><span class="sbadge ${sbCls}">${sbTxt}</span></td>
-    <td>${pilotoHTML}</td>
-    <td>${tiempoHTML}</td>
-    <td>${gpsHTML}</td>
-    <td>${accion}</td>
-  </tr>`;
-}
-
-function actualizarStats(){
-  const espera=pedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado');
-  const enRuta=pedidos.filter(p=>p.estado==='en_ruta');
-  const entregados=pedidos.filter(p=>p.estado==='entregado'||p.estado==='cerrado');
-  const alertas=pedidos.filter(p=>esAlerta(p));
-  document.getElementById('st-espera').textContent=espera.length;
-  document.getElementById('st-espera-sub').textContent=espera.filter(p=>p.estado==='pendiente').length+' sin piloto';
-  document.getElementById('st-ruta').textContent=enRuta.length;
-  document.getElementById('st-ruta-sub').textContent=alertas.length+' alertas';
-  document.getElementById('st-entregados').textContent=entregados.length;
-  document.getElementById('st-alertas').textContent=alertas.length;
-  const conT=entregados.filter(p=>p.salida_at&&p.entregado_at);
-  if(conT.length){
-    const prom=Math.round(conT.reduce((s,p)=>(s+(new Date(p.entregado_at)-new Date(p.salida_at))/60000),0)/conT.length);
-    document.getElementById('st-prom').textContent=`prom. ${prom} min`;
-  }
-  document.getElementById('f-alert-btn').classList.toggle('on',alertas.length>0);
-}
-
-function actualizarContadores(){
-  document.getElementById('f-todos').textContent=pedidos.filter(p=>p.estado!=='cerrado').length;
-  document.getElementById('f-pendiente').textContent=pedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado').length;
-  document.getElementById('f-ruta').textContent=pedidos.filter(p=>p.estado==='en_ruta').length;
-  document.getElementById('f-entregado').textContent=pedidos.filter(p=>p.estado==='entregado').length;
-  document.getElementById('f-alert-cnt').textContent=pedidos.filter(p=>esAlerta(p)).length;
-}
-
-function renderSidebar(){
-  const alertas=pedidos.filter(p=>esAlerta(p));
-  document.getElementById('sb-alertas').innerHTML=alertas.length===0
-    ?'<div style="font-size:11px;color:var(--muted)">Sin alertas activas</div>'
-    :alertas.map(p=>`<div class="alert-item">
-        <div class="ai-num">#${p.numero_pedido}</div>
-        <div class="ai-name">${p.cliente_nombre}</div>
-        <div class="ai-time">⏱ ${minutosDesde(p.salida_at||p.assigned_at)} min</div>
-        <button class="ai-call" onclick="cambiarEstado('${p.id}','entregado')">✓ Marcar entregado</button>
-      </div>`).join('');
-
-  document.getElementById('sb-pilotos-cnt').textContent=pilotos.length+' activos';
-  document.getElementById('sb-pilotos').innerHTML=pilotos.length===0
-    ?'<div style="font-size:11px;color:var(--muted)">Sin pilotos</div>'
-    :pilotos.map((p,i)=>{
-      const avCls=avColors[i%avColors.length];
-      const init=p.nombre.split(' ').map(w=>w[0]).join('').slice(0,2);
-      const mis=pedidos.filter(x=>x.piloto_id===p.id&&(x.estado==='en_ruta'||x.estado==='asignado'));
-      const tieneAlerta=mis.some(x=>esAlerta(x));
-      let sCls='ok',sTxt='Disponible';
-      if(tieneAlerta){sCls='alert';sTxt='Alerta activa';}
-      else if(mis.length){sCls='ruta';sTxt=`En ruta · ${mis.length} ped.`;}
-      return `<div class="pilot-row">
-        <div class="pav ${avCls}">${init}</div>
-        <div class="pr-info"><div class="pr-name">${p.nombre}</div><div class="pr-status ${sCls}">${sTxt}</div></div>
-        <div class="pr-cnt">${mis.length}</div>
+function renderPedidos(lista){
+  const wrap=document.getElementById('pedidos-wrap');
+  if(!lista.length){
+    wrap.innerHTML=`
+      <div class="empty-state">
+        <span class="empty-ico">📭</span>
+        <div class="empty-txt">No tienes despachos asignados<br>por ahora.<br><br>El Monitor te asignará pedidos<br>cuando estén listos.</div>
       </div>`;
-    }).join('');
+    return;
+  }
+
+  // Separar activos de entregados
+  const activos=lista.filter(p=>p.estado!=='entregado');
+  const entregados=lista.filter(p=>p.estado==='entregado');
+
+  let html='';
+  if(activos.length){
+    html+=activos.map(p=>cardHTML(p)).join('');
+  }
+  if(entregados.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:8px 0 10px;">Entregados hoy</div>`;
+    html+=entregados.map(p=>cardHTML(p)).join('');
+  }
+  wrap.innerHTML=html;
 }
 
-function suscribirRealtime(){
-  sb.channel('mon-rt').on('postgres_changes',{event:'*',schema:'public',table:'pedidos'},()=>cargarPedidos()).subscribe();
-}
+function cardHTML(p){
+  const eLabel={asignado:'ASIGNADO',en_ruta:'EN RUTA',entregado:'ENTREGADO'}[p.estado]||p.estado;
+  const eBadge={asignado:'b-asignado',en_ruta:'b-en_ruta',entregado:'b-entregado'}[p.estado]||'';
 
-function setFilter(f,btn){
-  filtro=f;
-  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderTabla();
+  // Tiempo en ruta
+  let tiempoHTML='';
+  if(p.estado==='en_ruta'&&p.salida_at){
+    const mins=Math.floor((Date.now()-new Date(p.salida_at).getTime())/60000);
+    tiempoHTML=`<div class="pc-tiempo">
+      <div class="tiempo-badge" id="timer-${p.id}">${formatMins(mins)}</div>
+      <div class="tiempo-label">en ruta</div>
+    </div>`;
+  }
+
+  // Descripción
+  const descHTML=p.descripcion
+    ?`<div class="pc-desc">📦 ${p.descripcion}</div>`:'';
+
+  // Teléfono + Maps
+  const telHTML=p.cliente_telefono?`
+    <div class="pc-tel">
+      <a class="tel-btn" href="tel:${p.cliente_telefono}">📞 Llamar</a>
+      <a class="maps-btn" href="https://maps.google.com/?q=${encodeURIComponent(p.direccion)}" target="_blank">🗺 Ver mapa</a>
+    </div>`:'';
+
+  // Botones de acción
+  let accionHTML='';
+  if(p.estado==='asignado'){
+    accionHTML=`
+      <div class="action-area">
+        <div class="gps-info" id="gps-info-${p.id}">
+          <span>📍</span>
+          <span id="gps-info-txt-${p.id}">Activa el GPS antes de salir</span>
+        </div>
+        <button class="action-btn btn-salir" onclick="marcarEnRuta('${p.id}')">
+          🚀 Confirmar Salida
+        </button>
+      </div>`;
+  } else if(p.estado==='en_ruta'){
+    accionHTML=`
+      <div class="action-area">
+        <div class="gps-info">
+          <span>📍</span>
+          <span id="gps-info-txt-${p.id}">${miLat?`Ubicación activa · ${miLat.toFixed(4)}, ${miLng.toFixed(4)}`:'Esperando señal GPS...'}</span>
+        </div>
+        <button class="action-btn btn-entregar" onclick="marcarEntregado('${p.id}')">
+          ✅ Confirmar Entregado
+        </button>
+      </div>`;
+  } else if(p.estado==='entregado'){
+    accionHTML=`<div class="action-btn btn-disabled" style="font-size:15px;">✓ Entregado a las ${formatHora(p.entregado_at)}</div>`;
+  }
+
+  return `
+  <div class="pedido-card">
+    <div class="pc-head">
+      <div>
+        <div class="pc-num">#${p.numero_pedido}</div>
+      </div>
+      <div class="pc-badge ${eBadge}">${eLabel}</div>
+    </div>
+    <div class="pc-body">
+      <div class="pc-cliente">${p.cliente_nombre}</div>
+      <div class="pc-dir"><span class="pc-dir-ico">📍</span>${p.direccion}</div>
+      ${descHTML}
+      ${tiempoHTML}
+      ${telHTML}
+      ${accionHTML}
+    </div>
+  </div>`;
 }
 
 // ── ACCIONES ──────────────────────────────────────
-async function crearPedido(){
-  const factura=document.getElementById('n-factura').value.trim();
-  const nombre=document.getElementById('n-nombre').value.trim();
-  const tel=document.getElementById('n-tel').value.trim();
-  const dir=document.getElementById('n-dir').value.trim();
-  const desc=document.getElementById('n-desc').value.trim();
-  if(!factura){toast('El número de factura es obligatorio','err');return;}
-  if(!nombre||!tel||!dir){toast('Completa nombre, teléfono y dirección','err');return;}
-  const {error}=await sb.from('pedidos').insert({
-    cliente_nombre:nombre,cliente_telefono:tel,
-    direccion:dir,descripcion:desc||null,
-    creado_por:usuario.id,numero_pedido:factura
-  });
-  if(error){
-    if(error.code==='23505'){toast('Ya existe ese número de factura','err');return;}
-    toast('Error: '+error.message,'err');return;
+async function marcarEnRuta(pedidoId){
+  const update={estado:'en_ruta'};
+  if(miLat&&miLng){
+    update.lat_entrega=miLat;
+    update.lng_entrega=miLng;
   }
-  cerrarModal('m-nuevo');
-  ['n-factura','n-nombre','n-tel','n-dir','n-desc'].forEach(id=>document.getElementById(id).value='');
-  toast('Pedido #'+factura+' creado ✅','ok');
+  const {error}=await sb.from('pedidos').update(update).eq('id',pedidoId);
+  if(error){toast('Error al actualizar','err');return;}
+  toast('🚀 ¡En ruta! El monitor está siguiendo tu recorrido','info');
+  await cargarPedidos();
 }
 
-function abrirAsignar(id,num){selId=id;document.getElementById('a-num').value=num;abrirModal('m-asignar');}
-async function confirmarAsignacion(){
-  const pid=document.getElementById('a-piloto').value;
-  if(!pid){toast('Selecciona un piloto','err');return;}
-
-  // Obtener datos del pedido para la notificación
-  const pedido=pedidos.find(p=>p.id===selId);
-
-  const {error}=await sb.from('pedidos').update({estado:'asignado',piloto_id:pid}).eq('id',selId);
-  if(error){toast('Error al asignar','err');return;}
-
-  cerrarModal('m-asignar');
-  toast('Piloto asignado ✅','ok');
-
-  // Enviar notificación push al piloto
-  try {
-    // Obtener FCM token del piloto
-    const {data:pilotData}=await sb.from('pilotos').select('fcm_token,nombre').eq('id',pid).single();
-    if(pilotData?.fcm_token){
-      await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          fcm_token: pilotData.fcm_token,
-          titulo: '🏍️ Nuevo pedido asignado',
-          cuerpo: '#'+(pedido?.numero_pedido||'')+' · '+(pedido?.cliente_nombre||'')+' · '+(pedido?.direccion||'')
-        })
-      });
-      console.log('Push enviado a',pilotData.nombre);
-    }
-  } catch(e){ console.log('Notificación no enviada:', e.message); }
-}
-
-async function cambiarEstado(id,estado){
-  const {error}=await sb.from('pedidos').update({estado}).eq('id',id);
-  if(error){toast('Error','err');return;}
-  const m={en_ruta:'🟠 En ruta',entregado:'✅ Entregado',cerrado:'Pedido cerrado'};
-  toast(m[estado]||'Actualizado','ok');
-}
-
-function abrirNotas(id){selId=id;const p=pedidos.find(x=>x.id===id);document.getElementById('nota-txt').value=p?.notas_monitor||'';abrirModal('m-nota');}
-async function guardarNota(){
-  const nota=document.getElementById('nota-txt').value.trim();
-  const {error}=await sb.from('pedidos').update({notas_monitor:nota}).eq('id',selId);
-  if(error){toast('Error','err');return;}
-  cerrarModal('m-nota');toast('Nota guardada ✅','ok');
-}
-
-// ── REPORTES ──────────────────────────────────────
-function setPeriodo(p,btn){
-  periodo=p;
-  document.querySelectorAll('.fp-btn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  const dr=document.getElementById('date-range');
-  dr.style.display=p==='custom'?'flex':'none';
-  if(p!=='custom')cargarReportes();
-}
-
-function getRango(){
-  const hoy=new Date();
-  let desde,hasta=new Date(hoy);hasta.setHours(23,59,59,999);
-  if(periodo==='hoy'){desde=new Date(hoy);desde.setHours(0,0,0,0);}
-  else if(periodo==='semana'){desde=new Date(hoy);desde.setDate(hoy.getDate()-6);desde.setHours(0,0,0,0);}
-  else if(periodo==='mes'){desde=new Date(hoy.getFullYear(),hoy.getMonth(),1);}
-  else{
-    const d=document.getElementById('f-desde').value;
-    const h=document.getElementById('f-hasta').value;
-    if(!d||!h){toast('Selecciona ambas fechas','err');return null;}
-    desde=new Date(d+'T00:00:00');hasta=new Date(h+'T23:59:59');
+async function marcarEntregado(pedidoId){
+  const update={estado:'entregado'};
+  if(miLat&&miLng){
+    update.lat_entrega=miLat;
+    update.lng_entrega=miLng;
   }
-  return{desde,hasta};
+  const {error}=await sb.from('pedidos').update(update).eq('id',pedidoId);
+  if(error){toast('Error al actualizar','err');return;}
+  toast('✅ ¡Entregado! Buen trabajo','ok');
+  await cargarPedidos();
 }
 
-async function cargarReportes(){
-  const rango=getRango();if(!rango)return;
-  document.getElementById('rep-body').innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)"><span class="spin"></span> Cargando...</div>';
-  document.getElementById('xlsx-btn').disabled=true;
-  const opts={day:'2-digit',month:'short'};
-  document.getElementById('rep-info').textContent=`${rango.desde.toLocaleDateString('es-VE',opts)} — ${rango.hasta.toLocaleDateString('es-VE',opts)}`;
-  const {data}=await sb.from('pedidos').select('*,pilotos(nombre)')
-    .gte('created_at',rango.desde.toISOString())
-    .lte('created_at',rango.hasta.toISOString())
-    .order('created_at',{ascending:true});
-  reportePedidos=data||[];
-  renderReportes(rango);
-  document.getElementById('xlsx-btn').disabled=false;
-}
-
-function renderReportes(rango){
-  const total=reportePedidos.length;
-  const entregados=reportePedidos.filter(p=>p.estado==='entregado'||p.estado==='cerrado');
-  const conT=entregados.filter(p=>p.salida_at&&p.entregado_at);
-  const prom=conT.length?Math.round(conT.reduce((s,p)=>(s+(new Date(p.entregado_at)-new Date(p.salida_at))/60000),0)/conT.length):0;
-  const tasa=total?Math.round((entregados.length/total)*100):0;
-
-  // Por día
-  const porDia={};
-  reportePedidos.forEach(p=>{const d=p.created_at.split('T')[0];porDia[d]=(porDia[d]||0)+1;});
-  const dias=Object.keys(porDia).slice(-14);
-  const vals=dias.map(d=>porDia[d]);
-  const maxV=Math.max(...vals,1);
-
-  // Por piloto
-  const porPil={};
-  reportePedidos.forEach(p=>{
-    if(!p.piloto_id)return;
-    const n=p.pilotos?.nombre||'?';
-    if(!porPil[p.piloto_id]){porPil[p.piloto_id]={n,total:0,ok:0,ts:[]};}
-    porPil[p.piloto_id].total++;
-    if(p.estado==='entregado'||p.estado==='cerrado'){
-      porPil[p.piloto_id].ok++;
-      if(p.salida_at&&p.entregado_at)porPil[p.piloto_id].ts.push((new Date(p.entregado_at)-new Date(p.salida_at))/60000);
-    }
-  });
-  const pilData=Object.values(porPil).map(d=>({
-    n:d.n,total:d.total,ok:d.ok,
-    prom:d.ts.length?Math.round(d.ts.reduce((a,b)=>a+b,0)/d.ts.length):0,
-    tasa:d.total?Math.round((d.ok/d.total)*100):0
-  })).sort((a,b)=>b.ok-a.ok);
-
-  document.getElementById('rep-body').innerHTML=`
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-lbl">Total pedidos</div><div class="kpi-val white">${total}</div><div class="kpi-sub">en el período</div></div>
-    <div class="kpi"><div class="kpi-lbl">Entregados</div><div class="kpi-val green">${entregados.length}</div><div class="kpi-sub">completados</div></div>
-    <div class="kpi"><div class="kpi-lbl">Tasa de entrega</div><div class="kpi-val ${tasa>=80?'green':tasa>=60?'orange':'red'}">${tasa}%</div><div class="kpi-sub">del total</div></div>
-    <div class="kpi"><div class="kpi-lbl">Tiempo promedio</div><div class="kpi-val orange">${prom}</div><div class="kpi-sub">minutos por entrega</div></div>
-    <div class="kpi"><div class="kpi-lbl">Pendientes</div><div class="kpi-val ${reportePedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado').length>0?'yellow':'green'}">${reportePedidos.filter(p=>p.estado==='pendiente'||p.estado==='asignado').length}</div><div class="kpi-sub">sin completar</div></div>
-    <div class="kpi"><div class="kpi-lbl">Pilotos activos</div><div class="kpi-val blue">${pilData.length}</div><div class="kpi-sub">con despachos</div></div>
-  </div>
-
-  <div class="rep-grid2">
-    <div>
-      <div class="rep-sec-title">📈 Volumen por día</div>
-      <div class="chart-box">
-        <div class="chart-bars">
-          ${dias.map((d,i)=>{
-            const v=vals[i];const pct=Math.max(Math.round((v/maxV)*100),3);
-            const lbl=new Date(d+'T12:00:00').toLocaleDateString('es-VE',{day:'2-digit',month:'short'});
-            return `<div class="bar-col"><div class="bar-val">${v}</div><div class="bar-fill" style="height:${pct}%"></div><div class="bar-lbl">${lbl}</div></div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="rep-sec-title">🏍️ Rendimiento por piloto</div>
-      <table class="data-tbl">
-        <thead><tr><th>Piloto</th><th>Total</th><th>Entregados</th><th>Prom.</th><th>Tasa</th></tr></thead>
-        <tbody>
-          ${pilData.length===0
-            ?'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Sin datos</td></tr>'
-            :pilData.map(p=>`<tr>
-              <td style="font-weight:500">${p.n}</td>
-              <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">${p.total}</td>
-              <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${p.ok}</td>
-              <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.prom?p.prom+' min':'—'}</td>
-              <td><span class="${p.tasa>=80?'badge-ok':p.tasa>=60?'badge-warn':'badge-red'}">${p.tasa}%</span></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="rep-sec-title">📋 Detalle de pedidos</div>
-  <table class="data-tbl">
-    <thead><tr><th>Factura</th><th>Cliente</th><th>Piloto</th><th>Estado</th><th>Hora</th><th>Tiempo entrega</th></tr></thead>
-    <tbody>
-      ${reportePedidos.slice().reverse().slice(0,60).map(p=>{
-        const mins=p.salida_at&&p.entregado_at?Math.round((new Date(p.entregado_at)-new Date(p.salida_at))/60000):null;
-        const hora=new Date(p.created_at).toLocaleString('es-VE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-        const eL={pendiente:'En espera',asignado:'Asignado',en_ruta:'En ruta',entregado:'Entregado',cerrado:'Cerrado'}[p.estado]||p.estado;
-        const bCls=p.estado==='entregado'||p.estado==='cerrado'?'badge-ok':p.estado==='en_ruta'?'badge-warn':'badge-red';
-        return `<tr>
-          <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#60a5fa">${p.numero_pedido||'—'}</td>
-          <td><div style="font-weight:500">${p.cliente_nombre}</div><div style="font-size:10px;color:var(--muted2)">${p.direccion}</div></td>
-          <td>${p.pilotos?.nombre||'—'}</td>
-          <td><span class="${bCls}">${eL}</span></td>
-          <td style="font-size:11px;color:var(--muted2)">${hora}</td>
-          <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${mins!==null?mins+' min':'—'}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>`;
-}
-
-// ── EXCEL ─────────────────────────────────────────
-function exportarExcel(){
-  if(!reportePedidos.length){toast('Sin datos para exportar','err');return;}
-  const rango=getRango();
-  const entregados=reportePedidos.filter(p=>p.estado==='entregado'||p.estado==='cerrado');
-  const conT=entregados.filter(p=>p.salida_at&&p.entregado_at);
-  const prom=conT.length?Math.round(conT.reduce((s,p)=>(s+(new Date(p.entregado_at)-new Date(p.salida_at))/60000),0)/conT.length):0;
-
-  const wsRes=XLSX.utils.aoa_to_sheet([
-    ['REPORTE FARMAPAZ · NAVI GROUP'],['Generado:',new Date().toLocaleString('es-VE')],
-    ['Período:',rango?`${rango.desde.toLocaleDateString('es-VE')} — ${rango.hasta.toLocaleDateString('es-VE')}`:'—'],[],
-    ['INDICADOR','VALOR'],['Total pedidos',reportePedidos.length],['Entregados',entregados.length],
-    ['Tasa entrega (%)',reportePedidos.length?Math.round((entregados.length/reportePedidos.length)*100):0],
-    ['Tiempo promedio (min)',prom],
-  ]);
-
-  const wsPed=XLSX.utils.aoa_to_sheet([
-    ['Factura','Cliente','Teléfono','Dirección','Piloto','Estado','Fecha','Hora','Tiempo entrega (min)','Productos'],
-    ...reportePedidos.map(p=>{
-      const mins=p.salida_at&&p.entregado_at?Math.round((new Date(p.entregado_at)-new Date(p.salida_at))/60000):'';
-      const dt=new Date(p.created_at);
-      return[p.numero_pedido||'',p.cliente_nombre,p.cliente_telefono||'',p.direccion,
-        p.pilotos?.nombre||'',{pendiente:'En espera',asignado:'Asignado',en_ruta:'En ruta',entregado:'Entregado',cerrado:'Cerrado'}[p.estado]||p.estado,
-        dt.toLocaleDateString('es-VE'),dt.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'}),mins,p.descripcion||''];
+// ── REALTIME ──────────────────────────────────────
+function suscribirRealtime(){
+  if(!piloto)return;
+  sb.channel('piloto-pedidos')
+    .on('postgres_changes',{
+      event:'INSERT',schema:'public',table:'pedidos',
+      filter:`piloto_id=eq.${piloto.id}`
+    }, payload => {
+      alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
+      cargarPedidos();
     })
-  ]);
-
-  const porPil={};
-  reportePedidos.forEach(p=>{
-    if(!p.piloto_id)return;
-    const n=p.pilotos?.nombre||'?';
-    if(!porPil[p.piloto_id]){porPil[p.piloto_id]={n,total:0,ok:0,ts:[]};}
-    porPil[p.piloto_id].total++;
-    if(p.estado==='entregado'||p.estado==='cerrado'){porPil[p.piloto_id].ok++;if(p.salida_at&&p.entregado_at)porPil[p.piloto_id].ts.push((new Date(p.entregado_at)-new Date(p.salida_at))/60000);}
-  });
-  const wsPil=XLSX.utils.aoa_to_sheet([
-    ['Piloto','Total','Entregados','Tasa (%)','Prom. min'],
-    ...Object.values(porPil).map(d=>([d.n,d.total,d.ok,d.total?Math.round((d.ok/d.total)*100):0,d.ts.length?Math.round(d.ts.reduce((a,b)=>a+b,0)/d.ts.length):0]))
-  ]);
-
-  const porDia={};
-  reportePedidos.forEach(p=>{const d=p.created_at.split('T')[0];porDia[d]=(porDia[d]||0)+1;});
-  const wsDia=XLSX.utils.aoa_to_sheet([['Fecha','Pedidos'],...Object.entries(porDia).sort().map(([d,v])=>[d,v])]);
-
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,wsRes,'Resumen');
-  XLSX.utils.book_append_sheet(wb,wsPed,'Pedidos');
-  XLSX.utils.book_append_sheet(wb,wsPil,'Pilotos');
-  XLSX.utils.book_append_sheet(wb,wsDia,'Por día');
-  XLSX.writeFile(wb,`Farmapaz_${new Date().toISOString().split('T')[0]}.xlsx`);
-  toast('Excel descargado ✅','ok');
-}
-
-// ── GPS PILOTOS ───────────────────────────────────
-let gpsCountdownTimer=null, gpsRefreshTimer=null, gpsCountdownVal=60;
-
-async function actualizarGPS(){
-  const grid=document.getElementById('gps-grid');
-  const {data}=await sb.from('pilotos').select('id,nombre,disponible,lat,lng,ubicacion_at').order('nombre');
-  if(!data||!data.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Sin pilotos registrados</div>';
-    return;
-  }
-  grid.innerHTML=data.map((p,i)=>{
-    const tieneGPS=p.lat&&p.lng;
-    const avCls=avColors[i%avColors.length];
-    const init=p.nombre.split(' ').map(w=>w[0]).join('').slice(0,2);
-    let tiempoLabel='Sin conexión';
-    let tiempoColor='var(--muted)';
-    if(p.ubicacion_at){
-      const mins=Math.floor((Date.now()-new Date(p.ubicacion_at).getTime())/60000);
-      if(mins<2){tiempoLabel='Ahora mismo';tiempoColor='var(--green)';}
-      else if(mins<10){tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--yellow)';}
-      else{tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--red)';}
-    }
-    const mapsUrl=tieneGPS?`https://www.google.com/maps?q=${p.lat},${p.lng}`:'';
-    return `<div class="gps-card ${tieneGPS?'gps-active':'gps-offline'}">
-      <div class="gps-card-head">
-        <div class="pav ${avCls}">${init}</div>
-        <div>
-          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
-          <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.disponible?'Disponible':'Ocupado'}</div>
-        </div>
-        <div style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:${tieneGPS?'var(--green)':'var(--muted)'};${tieneGPS?'box-shadow:0 0 6px rgba(34,197,94,.5)':''}"></div>
-      </div>
-      <div class="gps-card-body">
-        ${tieneGPS
-          ?`<div class="gps-coord">Lat: ${parseFloat(p.lat).toFixed(6)}<br>Lng: ${parseFloat(p.lng).toFixed(6)}</div>`
-          :'<div class="gps-coord" style="color:var(--muted)">Sin coordenadas disponibles</div>'}
-        <div class="gps-time" style="color:${tiempoColor}">🕐 ${tiempoLabel}</div>
-        ${tieneGPS
-          ?`<a class="gps-map-btn" href="${mapsUrl}" target="_blank">🗺 Ver en Google Maps</a>`
-          :`<div class="gps-map-btn off">Sin ubicación activa</div>`}
-      </div>
-    </div>`;
-  }).join('');
-  // Reset countdown
-  gpsCountdownVal=60;
-}
-
-function iniciarGPSCountdown(){
-  if(gpsCountdownTimer)clearInterval(gpsCountdownTimer);
-  if(gpsRefreshTimer)clearInterval(gpsRefreshTimer);
-  gpsCountdownVal=60;
-  gpsCountdownTimer=setInterval(()=>{
-    gpsCountdownVal--;
-    const el=document.getElementById('gps-countdown');
-    if(el)el.textContent=gpsCountdownVal;
-    if(gpsCountdownVal<=0){gpsCountdownVal=60;actualizarGPS();}
-  },1000);
+    .on('postgres_changes',{
+      event:'UPDATE',schema:'public',table:'pedidos',
+      filter:`piloto_id=eq.${piloto.id}`
+    }, payload => {
+      // Alertar solo cuando se asigna (cambia a asignado)
+      if(payload.new.estado === 'asignado' && payload.old.estado !== 'asignado') {
+        alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
+      }
+      cargarPedidos();
+    })
+    .subscribe();
 }
 
 // ── UTILS ─────────────────────────────────────────
-function minutosDesde(iso){if(!iso)return 0;return Math.floor((Date.now()-new Date(iso).getTime())/60000);}
-function formatTiempo(m){if(m<60)return `${String(m).padStart(2,'0')}:00`;return `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;}
-function abrirModal(id){document.getElementById(id).classList.add('open');}
-function cerrarModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+function formatMins(mins){
+  if(mins<60)return `${String(mins).padStart(2,'0')}:00`;
+  const h=Math.floor(mins/60),m=mins%60;
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function formatHora(iso){
+  if(!iso)return '—';
+  return new Date(iso).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});
+}
 
 let toastT;
 function toast(msg,tipo){
   const el=document.getElementById('toast');
-  el.textContent=msg;el.className='show '+(tipo||'ok');
-  clearTimeout(toastT);toastT=setTimeout(()=>el.className='',3000);
+  el.textContent=msg;el.className='show '+(tipo||'info');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.className='',4000);
 }
+
+// Auto-login sesión activa
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)await iniciarApp(session.user);
+})();
+
+// Actualizar coordenadas en pantalla cada 10 seg
+setInterval(()=>{
+  if(!miLat)return;
+  document.querySelectorAll('[id^="gps-info-txt-"]').forEach(el=>{
+    el.textContent=`Ubicación activa · ${miLat.toFixed(4)}, ${miLng.toFixed(4)}`;
+  });
+},10000);
 </script>
 </body>
 </html>
