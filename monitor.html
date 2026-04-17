@@ -835,7 +835,7 @@ let gpsCountdownTimer=null, gpsRefreshTimer=null, gpsCountdownVal=60;
 
 async function actualizarGPS(){
   const grid=document.getElementById('gps-grid');
-  const {data}=await sb.from('pilotos').select('*, profiles(nombre,email)').order('nombre');
+  const {data}=await sb.from('pilotos').select('id,nombre,disponible,lat,lng,ubicacion_at').order('nombre');
   if(!data||!data.length){
     grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Sin pilotos registrados</div>';
     return;
