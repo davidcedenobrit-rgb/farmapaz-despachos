@@ -6,6 +6,8 @@
 <title>Farmapaz · Piloto</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -170,6 +172,58 @@ const sb=supabase.createClient(
 let usuario=null, perfil=null, piloto=null;
 let pedidos=[], miLat=null, miLng=null;
 let gpsWatchId=null, gpsUpdateTimer=null;
+
+// Firebase Push Notifications
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBbsa1G4H9DlJ6GK6aNy4izJSiQ3EWqHK4",
+  authDomain: "farmapaz-despachos.firebaseapp.com",
+  projectId: "farmapaz-despachos",
+  storageBucket: "farmapaz-despachos.firebasestorage.app",
+  messagingSenderId: "3879404311",
+  appId: "1:3879404311:web:5d9ca356a8161d2f24ad52"
+};
+const VAPID_KEY = "BA4oIsqRZ4rUUQCt8rbGDewh7ZQzgr1ky4sfNXETPvjpIbXxAIc2_P_OrANDjJU14IcERtzYUx4rHawjvVGI9nk";
+const NOTIF_URL = "https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint";
+
+async function iniciarPushNotifications() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+
+    // Registrar service worker
+    if (!('serviceWorker' in navigator)) return;
+    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Pedir permiso
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      console.log('Permiso de notificaciones denegado');
+      return;
+    }
+
+    // Obtener token FCM
+    const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+    if (!token) return;
+
+    // Guardar token en Supabase
+    if (piloto) {
+      await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
+      console.log('FCM token guardado');
+    }
+
+    // Manejar notificaciones cuando app está abierta
+    messaging.onMessage(function(payload) {
+      sonarAlarma();
+      vibrarTelefono();
+      toast('🔔 ' + (payload.notification?.title || 'Nuevo pedido'), 'info');
+      setTimeout(cargarPedidos, 1000);
+    });
+
+  } catch(err) {
+    console.log('Push notifications error:', err.message);
+  }
+}
 let tiempoTimers={};
 
 // Alerta sonora via Web Audio API (sin dependencias externas)
@@ -217,11 +271,7 @@ function alertaNuevoPedido(numeroPedido, cliente) {
   toast(`🔔 Nuevo pedido: #${numeroPedido} · ${cliente}`, 'info');
 }
 
-async function pedirPermisoNotificaciones() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    await Notification.requestPermission();
-  }
-}
+
 
 // ── AUTH ──────────────────────────────────────────
 async function doLogin(){
@@ -265,7 +315,7 @@ async function iniciarApp(user){
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
   // Pedir permiso de notificaciones
-  setTimeout(pedirPermisoNotificaciones, 2000);
+  setTimeout(iniciarPushNotifications, 2000);
 }
 
 async function doLogout(){
