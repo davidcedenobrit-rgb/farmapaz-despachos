@@ -12,26 +12,24 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Manejar notificaciones cuando la app está en background
 messaging.onBackgroundMessage(function(payload) {
-  console.log('Notificación en background:', payload);
-  const { title, body, icon } = payload.notification;
+  const title = payload.notification?.title || 'Nuevo pedido Farmapaz';
+  const body  = payload.notification?.body  || 'Tienes un pedido asignado';
   self.registration.showNotification(title, {
-    body,
-    icon: icon || '/icon-192.png',
-    badge: '/icon-192.png',
-    vibrate: [200, 100, 200],
-    data: payload.data,
-    actions: [
-      { action: 'ver', title: '👀 Ver pedido' }
-    ]
+    body, icon: '/icon-192.png', badge: '/icon-192.png',
+    vibrate: [300, 100, 300, 100, 500],
+    requireInteraction: true, tag: 'farmapaz-pedido', renotify: true
   });
 });
 
-// Click en la notificación
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/')
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (const c of list) {
+        if (c.url.includes('/piloto') && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/piloto');
+    })
   );
 });
