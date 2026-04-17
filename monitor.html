@@ -855,7 +855,7 @@ function exportarExcel(){
 }
 
 // ── USUARIOS ──────────────────────────────────────
-const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/crear-usuario';
+const EDGE_URL = 'https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/hyper-processor';
 
 async function cargarUsuarios() {
   const { data } = await sb.from('profiles').select('*').order('rol').order('nombre');
