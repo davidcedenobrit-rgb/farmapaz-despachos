@@ -140,9 +140,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
       <div class="tb-name" id="tb-name">Piloto</div>
       <div class="tb-role">🏍️ Delivery · Farmapaz</div>
     </div>
-    <div class="gps-status" id="gps-status" onclick="activarGPS()">
-      <div class="gps-dot" id="gps-dot"></div>
-      <span class="gps-txt" id="gps-txt">GPS apagado</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="notif-btn" onclick="activarNotificaciones()" style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:6px 10px;color:#eab308;font-size:11px;font-weight:700;cursor:pointer;display:none;">🔔 Activar</button>
+      <div class="gps-status" id="gps-status" onclick="activarGPS()">
+        <div class="gps-dot" id="gps-dot"></div>
+        <span class="gps-txt" id="gps-txt">GPS apagado</span>
+      </div>
     </div>
   </div>
 
@@ -187,41 +190,60 @@ const NOTIF_URL = "https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-
 
 async function iniciarPushNotifications() {
   try {
-    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    const messaging = firebase.messaging();
-
-    // Registrar service worker
     if (!('serviceWorker' in navigator)) return;
-    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+    // Registrar SW primero
+    await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
 
-    // Pedir permiso
+    // Verificar permiso actual
+    if (Notification.permission === 'granted') {
+      await registrarTokenFCM();
+    } else if (Notification.permission === 'default') {
+      // Mostrar botón para que el usuario lo active manualmente
+      const btn = document.getElementById('notif-btn');
+      if (btn) btn.style.display = 'flex';
+    }
+    // Si está denied, no hacer nada
+  } catch(err) {
+    console.log('Push init error:', err.message);
+  }
+}
+
+async function activarNotificaciones() {
+  try {
     const permiso = await Notification.requestPermission();
-    if (permiso !== 'granted') {
-      console.log('Permiso de notificaciones denegado');
-      return;
+    const btn = document.getElementById('notif-btn');
+    if (permiso === 'granted') {
+      if (btn) btn.style.display = 'none';
+      await registrarTokenFCM();
+      toast('🔔 Notificaciones activadas ✅', 'ok');
+    } else {
+      toast('Activa las notificaciones en Ajustes del navegador', 'err');
     }
+  } catch(err) {
+    console.log('Error activando notificaciones:', err.message);
+  }
+}
 
-    // Obtener token FCM
+async function registrarTokenFCM() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+    const swReg = await navigator.serviceWorker.ready;
     const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
-    if (!token) return;
-
-    // Guardar token en Supabase
-    if (piloto) {
+    if (token && usuario) {
       await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
-      console.log('FCM token guardado');
+      console.log('FCM token guardado ✅');
     }
-
-    // Manejar notificaciones cuando app está abierta
     messaging.onMessage(function(payload) {
       sonarAlarma();
       vibrarTelefono();
       toast('🔔 ' + (payload.notification?.title || 'Nuevo pedido'), 'info');
       setTimeout(cargarPedidos, 1000);
     });
-
   } catch(err) {
-    console.log('Push notifications error:', err.message);
+    console.log('Error registrando FCM:', err.message);
   }
 }
 let tiempoTimers={};
