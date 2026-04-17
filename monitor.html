@@ -963,9 +963,10 @@ async function crearUsuario() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-monitor-key': 'navimonitor2026',
+        'apikey': 'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti',
+        'Authorization': 'Bearer sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti',
       },
-      body: JSON.stringify({ email, password: pass, nombre, rol })
+      body: JSON.stringify({ email, password: pass, nombre, rol, monitorKey: 'navimonitor2026' })
     });
     const result = await res.json();
     if (!res.ok || result.error) {
