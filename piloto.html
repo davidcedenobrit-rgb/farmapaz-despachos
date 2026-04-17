@@ -6,6 +6,8 @@
 <title>Farmapaz · Piloto</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -171,6 +173,62 @@ let pedidos=[], miLat=null, miLng=null;
 let gpsWatchId=null, gpsUpdateTimer=null;
 let tiempoTimers={};
 
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyBbsa1G4H9DlJ6GK6aNy4izJSiQ3EWqHK4",
+  authDomain: "farmapaz-despachos.firebaseapp.com",
+  projectId: "farmapaz-despachos",
+  storageBucket: "farmapaz-despachos.firebasestorage.app",
+  messagingSenderId: "3879404311",
+  appId: "1:3879404311:web:5d9ca356a8161d2f24ad52"
+};
+const VAPID_KEY = "BA4oIsqRZ4rUUQCt8rbGDewh7ZQzgr1ky4sfNXETPvjpIbXxAIc2_P_OrANDjJU14IcERtzYUx4rHawjvVGI9nk";
+let messaging = null;
+
+async function iniciarNotificaciones() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    messaging = firebase.messaging();
+
+    // Registrar service worker
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('SW registrado:', reg.scope);
+    }
+
+    // Pedir permiso de notificaciones
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      console.log('Permiso de notificaciones denegado');
+      return;
+    }
+
+    // Obtener token FCM
+    const token = await messaging.getToken({ 
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: await navigator.serviceWorker.ready
+    });
+
+    if (token && piloto) {
+      // Guardar token en Supabase para que el monitor pueda enviar notificaciones
+      await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
+      console.log('Token FCM guardado:', token.slice(0,20)+'...');
+    }
+
+    // Manejar notificaciones cuando la app está abierta
+    messaging.onMessage((payload) => {
+      console.log('Notificación recibida:', payload);
+      const { title, body } = payload.notification;
+      toast(`🔔 ${title}: ${body}`, 'info');
+      // Recargar pedidos automáticamente
+      cargarPedidos();
+    });
+
+  } catch(err) {
+    console.log('Error notificaciones:', err.message);
+  }
+}
+
 // ── AUTH ──────────────────────────────────────────
 async function doLogin(){
   const email=document.getElementById('lemail').value.trim();
@@ -212,6 +270,8 @@ async function iniciarApp(user){
   suscribirRealtime();
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
+  // Iniciar notificaciones push
+  setTimeout(iniciarNotificaciones, 2000);
 }
 
 async function doLogout(){
