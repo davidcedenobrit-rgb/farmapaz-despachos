@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Farmapaz · Monitor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -203,12 +205,38 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
 .countdown{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--orange);}
 
 
+/* GPS MAP STYLES */
+.gps-layout{display:flex;flex:1;overflow:hidden;}
+#mapa-piloto{flex:1;z-index:1;background:#0a0c12;}
+.gps-sidebar{width:240px;background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;}
+.gps-sidebar-title{padding:14px 16px;border-bottom:1px solid var(--border);font-family:"Rajdhani",sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.gps-pilot-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.gps-pilot-item:hover{background:var(--bg3);}
+.gps-pilot-name{font-size:13px;font-weight:700;margin-bottom:3px;}
+.gps-pilot-status{font-size:11px;color:var(--muted2);}
+.gps-pilot-status.ruta{color:var(--orange);}
+.gps-pilot-status.alerta{color:var(--red);}
+.gps-pilot-status.ok{color:var(--green);}
+.gps-pilot-time{font-size:10px;color:var(--muted);margin-top:2px;}
+.gps-topbar{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--bg2);}
+.gps-update-badge{font-size:11px;color:var(--muted2);margin-left:auto;display:flex;align-items:center;gap:6px;}
+.gps-pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;}
+
+/* Leaflet popup custom */
+.leaflet-popup-content-wrapper{background:var(--bg2)!important;border:1px solid var(--border2)!important;border-radius:10px!important;color:var(--text)!important;box-shadow:0 8px 32px rgba(0,0,0,.6)!important;}
+.leaflet-popup-tip{background:var(--bg2)!important;}
+.popup-num{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--orange);margin-bottom:4px;}
+.popup-name{font-size:14px;font-weight:700;margin-bottom:4px;}
+.popup-status{font-size:11px;margin-bottom:8px;}
+.popup-maps{display:block;background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:6px;padding:7px 12px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;width:100%;}
+
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 20px;font-size:12px;font-weight:600;z-index:900;transition:transform .3s;white-space:nowrap;pointer-events:none;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:rgba(34,197,94,.5);color:#4ade80;}
 #toast.err{border-color:rgba(239,68,68,.5);color:#f87171;}
 .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;}
 @keyframes rot{to{transform:rotate(360deg)}}
+@keyframes mapaRing{0%{transform:translate(-50%,-50%) scale(1);opacity:.5}100%{transform:translate(-50%,-50%) scale(2);opacity:0}}
 </style>
 </head>
 <body>
@@ -316,22 +344,28 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
   </div>
 </div>
 
-<!-- ═══ VISTA GPS ═══ -->
-<div class="view" id="view-gps">
-  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-    <div>
-      <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">📍 GPS Pilotos en tiempo real</span>
-      <span style="font-size:11px;color:var(--muted2);margin-left:10px;">Actualización cada 60 segundos</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:12px;color:var(--muted2);">Próxima: <span class="countdown" id="gps-countdown">60</span>s</span>
-      <button onclick="actualizarGPS()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted2);font-size:12px;cursor:pointer;">↻ Actualizar</button>
+<!-- ═══ VISTA GPS MAPA ═══ -->
+<div class="view" id="view-gps" style="flex-direction:column;">
+  <!-- Topbar GPS -->
+  <div class="gps-topbar">
+    <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;">📍 GPS Pilotos — Maturín</span>
+    <button onclick="actualizarGPS()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 13px;color:var(--muted2);font-size:12px;cursor:pointer;">↻ Actualizar</button>
+    <div class="gps-update-badge">
+      <div class="gps-pulse"></div>
+      Próxima: <span id="gps-countdown">30</span>s
     </div>
   </div>
-  <div class="gps-grid" id="gps-grid">
-    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando ubicaciones...</div>
+  <!-- Layout mapa + sidebar -->
+  <div class="gps-layout">
+    <div id="mapa-piloto"></div>
+    <div class="gps-sidebar">
+      <div class="gps-sidebar-title">
+        <span>Pilotos</span>
+        <span id="gps-activos-cnt" style="font-size:11px;color:var(--muted2);font-family:'Inter',sans-serif;font-weight:400;"></span>
+      </div>
+      <div id="gps-pilot-list"><div style="padding:20px;font-size:12px;color:var(--muted)">Cargando...</div></div>
+    </div>
   </div>
-  <div style="text-align:center;padding:10px;font-size:10px;color:var(--muted);border-top:1px solid var(--border);">Ubicaciones actualizadas automáticamente desde el teléfono del piloto · Farmapaz · Navi Dev</div>
 </div>
 
 <!-- MODALES -->
@@ -425,7 +459,15 @@ function setTab(tab,btn){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('view-'+tab).classList.add('on');
   if(tab==='reportes'&&reportePedidos.length===0)cargarReportes();
-  if(tab==='gps'){actualizarGPS();iniciarGPSCountdown();}
+  if(tab==='gps'){
+    setTimeout(function(){
+      iniciarMapa();
+      actualizarGPS();
+      iniciarGPSCountdown();
+      // Forzar resize del mapa para que se dibuje correctamente
+      setTimeout(function(){ if(mapaLeaflet) mapaLeaflet.invalidateSize(); }, 100);
+    }, 50);
+  }
 }
 
 // ── RELOJ ─────────────────────────────────────────
@@ -860,63 +902,185 @@ function exportarExcel(){
   toast('Excel descargado ✅','ok');
 }
 
-// ── GPS PILOTOS ───────────────────────────────────
-let gpsCountdownTimer=null, gpsRefreshTimer=null, gpsCountdownVal=60;
+// ── GPS MAPA LEAFLET ──────────────────────────────
+let mapaLeaflet = null;
+let marcadoresMapa = {};
+let gpsCountdownTimer = null;
+let gpsCountdownVal = 30;
 
-async function actualizarGPS(){
-  const grid=document.getElementById('gps-grid');
-  const {data}=await sb.from('pilotos').select('id,nombre,disponible,lat,lng,ubicacion_at').order('nombre');
-  if(!data||!data.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Sin pilotos registrados</div>';
-    return;
-  }
-  grid.innerHTML=data.map((p,i)=>{
-    const tieneGPS=p.lat&&p.lng;
-    const avCls=avColors[i%avColors.length];
-    const init=p.nombre.split(' ').map(w=>w[0]).join('').slice(0,2);
-    let tiempoLabel='Sin conexión';
-    let tiempoColor='var(--muted)';
-    if(p.ubicacion_at){
-      const mins=Math.floor((Date.now()-new Date(p.ubicacion_at).getTime())/60000);
-      if(mins<2){tiempoLabel='Ahora mismo';tiempoColor='var(--green)';}
-      else if(mins<10){tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--yellow)';}
-      else{tiempoLabel=`Hace ${mins} min`;tiempoColor='var(--red)';}
-    }
-    const mapsUrl=tieneGPS?`https://www.google.com/maps?q=${p.lat},${p.lng}`:'';
-    return `<div class="gps-card ${tieneGPS?'gps-active':'gps-offline'}">
-      <div class="gps-card-head">
-        <div class="pav ${avCls}">${init}</div>
-        <div>
-          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
-          <div style="font-size:10px;color:var(--muted2);margin-top:2px;">${p.disponible?'Disponible':'Ocupado'}</div>
-        </div>
-        <div style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:${tieneGPS?'var(--green)':'var(--muted)'};${tieneGPS?'box-shadow:0 0 6px rgba(34,197,94,.5)':''}"></div>
-      </div>
-      <div class="gps-card-body">
-        ${tieneGPS
-          ?`<div class="gps-coord">Lat: ${parseFloat(p.lat).toFixed(6)}<br>Lng: ${parseFloat(p.lng).toFixed(6)}</div>`
-          :'<div class="gps-coord" style="color:var(--muted)">Sin coordenadas disponibles</div>'}
-        <div class="gps-time" style="color:${tiempoColor}">🕐 ${tiempoLabel}</div>
-        ${tieneGPS
-          ?`<a class="gps-map-btn" href="${mapsUrl}" target="_blank">🗺 Ver en Google Maps</a>`
-          :`<div class="gps-map-btn off">Sin ubicación activa</div>`}
-      </div>
-    </div>`;
-  }).join('');
-  // Reset countdown
-  gpsCountdownVal=60;
+// Coordenadas centro de Maturín, Venezuela
+const MATURIN_LAT = 9.7489;
+const MATURIN_LNG = -63.1810;
+
+// Colores por estado
+const ESTADO_COLOR = {
+  pendiente: '#4a5270',
+  asignado:  '#eab308',
+  en_ruta:   '#f97316',
+  entregado: '#22c55e',
+  cerrado:   '#3b82f6',
+  sin_gps:   '#4a5270'
+};
+
+function iniciarMapa() {
+  if (mapaLeaflet) return;
+
+  mapaLeaflet = L.map('mapa-piloto', {
+    center: [MATURIN_LAT, MATURIN_LNG],
+    zoom: 13,
+    zoomControl: true,
+    attributionControl: false
+  });
+
+  // Tile oscuro que combina con el diseño
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+  }).addTo(mapaLeaflet);
+
+  // Marcador de la farmacia (base)
+  const farmaIcon = L.divIcon({
+    html: '<div style="background:#ef4444;border:2px solid #fff;border-radius:50%;width:14px;height:14px;box-shadow:0 0 10px rgba(239,68,68,.6);"></div>',
+    className: '', iconSize: [14,14], iconAnchor: [7,7]
+  });
+  L.marker([MATURIN_LAT, MATURIN_LNG], { icon: farmaIcon })
+    .addTo(mapaLeaflet)
+    .bindPopup('<div style="color:#111;font-weight:700;font-size:13px;">🏪 Farmapaz</div>');
 }
 
-function iniciarGPSCountdown(){
-  if(gpsCountdownTimer)clearInterval(gpsCountdownTimer);
-  if(gpsRefreshTimer)clearInterval(gpsRefreshTimer);
-  gpsCountdownVal=60;
-  gpsCountdownTimer=setInterval(()=>{
+function crearIconoPiloto(piloto, index, estado) {
+  const color = ESTADO_COLOR[estado] || ESTADO_COLOR.sin_gps;
+  const init = piloto.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const esRuta = estado === 'en_ruta';
+  const pulse = esRuta ? `
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:40px;height:40px;border-radius:50%;border:2px solid ${color};
+      animation:mapaRing 1.5s infinite;opacity:.5;"></div>` : '';
+
+  return L.divIcon({
+    html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;">
+      ${pulse}
+      <div style="width:34px;height:34px;border-radius:50%;background:${color};
+        border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:800;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);
+        position:relative;z-index:1;">${init}</div>
+    </div>`,
+    className: '',
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -18]
+  });
+}
+
+async function actualizarGPS() {
+  if (!mapaLeaflet) iniciarMapa();
+
+  const { data: pilotos } = await sb.from('pilotos')
+    .select('id,nombre,disponible,lat,lng,ubicacion_at')
+    .order('nombre');
+
+  if (!pilotos) return;
+
+  // Obtener pedidos activos para estado de cada piloto
+  const hoy = new Date().toISOString().split('T')[0];
+  const { data: pedidosActivos } = await sb.from('pedidos')
+    .select('piloto_id,estado,numero_pedido,cliente_nombre')
+    .gte('created_at', hoy + 'T00:00:00')
+    .in('estado', ['asignado','en_ruta','entregado']);
+
+  const pedidoPorPiloto = {};
+  (pedidosActivos||[]).forEach(p => { pedidoPorPiloto[p.piloto_id] = p; });
+
+  // Actualizar sidebar
+  const listEl = document.getElementById('gps-pilot-list');
+  const activos = pilotos.filter(p => p.lat && p.lng).length;
+  document.getElementById('gps-activos-cnt').textContent = activos + ' con GPS';
+
+  listEl.innerHTML = '';
+  pilotos.forEach((p, i) => {
+    const pedido = pedidoPorPiloto[p.id];
+    const estado = pedido?.estado || 'sin_gps';
+    const tieneGPS = p.lat && p.lng;
+    const mins = p.ubicacion_at ? Math.floor((Date.now()-new Date(p.ubicacion_at).getTime())/60000) : null;
+    const color = ESTADO_COLOR[estado] || ESTADO_COLOR.sin_gps;
+    const eLabel = {asignado:'Asignado',en_ruta:'En ruta',entregado:'Entregado',sin_gps:'Sin pedido'}[estado]||estado;
+    const statCls = estado==='en_ruta'?'ruta':estado==='asignado'?'ok':estado==='entregado'?'ok':'';
+
+    const item = document.createElement('div');
+    item.className = 'gps-pilot-item';
+    item.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;">' +
+          p.nombre.split(' ').map(w=>w[0]).join('').slice(0,2) +
+        '</div>' +
+        '<div style="flex:1;">' +
+          '<div class="gps-pilot-name">' + p.nombre + '</div>' +
+          '<div class="gps-pilot-status ' + statCls + '">' + (tieneGPS ? eLabel : '📵 Sin GPS') + '</div>' +
+          (mins !== null ? '<div class="gps-pilot-time">Actualizado hace ' + (mins<1?'ahora mismo':mins+' min') + '</div>' : '') +
+        '</div>' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + (tieneGPS?'var(--green)':'var(--muted)') + ';flex-shrink:0;"></div>' +
+      '</div>';
+
+    if (tieneGPS) {
+      item.addEventListener('click', function() {
+        mapaLeaflet.setView([parseFloat(p.lat), parseFloat(p.lng)], 16, {animate:true});
+        if (marcadoresMapa[p.id]) marcadoresMapa[p.id].openPopup();
+      });
+    }
+    listEl.appendChild(item);
+
+    // Actualizar o crear marcador en el mapa
+    if (tieneGPS) {
+      const lat = parseFloat(p.lat);
+      const lng = parseFloat(p.lng);
+      const icon = crearIconoPiloto(p, i, estado);
+      const mapsUrl = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+      const timeLabel = mins !== null ? (mins<1?'Ahora mismo':'Hace '+mins+' min') : 'Sin datos';
+      const popupHtml =
+        '<div style="min-width:160px;">' +
+          (pedido ? '<div class="popup-num">#'+pedido.numero_pedido+'</div>' : '') +
+          '<div class="popup-name">' + p.nombre + '</div>' +
+          '<div class="popup-status" style="color:'+color+'">● ' + eLabel + '</div>' +
+          '<div style="font-size:10px;color:#666;margin-bottom:8px;">🕐 ' + timeLabel + '</div>' +
+          '<a class="popup-maps" href="' + mapsUrl + '" target="_blank">🗺 Ver en Google Maps</a>' +
+        '</div>';
+
+      if (marcadoresMapa[p.id]) {
+        marcadoresMapa[p.id].setLatLng([lat, lng]);
+        marcadoresMapa[p.id].setIcon(icon);
+        marcadoresMapa[p.id].getPopup().setContent(popupHtml);
+      } else {
+        marcadoresMapa[p.id] = L.marker([lat, lng], { icon })
+          .addTo(mapaLeaflet)
+          .bindPopup(popupHtml, { maxWidth: 200 });
+      }
+    } else {
+      // Sin GPS — remover marcador si existía
+      if (marcadoresMapa[p.id]) {
+        mapaLeaflet.removeLayer(marcadoresMapa[p.id]);
+        delete marcadoresMapa[p.id];
+      }
+    }
+  });
+
+  gpsCountdownVal = 30;
+}
+
+function iniciarGPSCountdown() {
+  if (gpsCountdownTimer) clearInterval(gpsCountdownTimer);
+  gpsCountdownVal = 30;
+  gpsCountdownTimer = setInterval(function() {
     gpsCountdownVal--;
-    const el=document.getElementById('gps-countdown');
-    if(el)el.textContent=gpsCountdownVal;
-    if(gpsCountdownVal<=0){gpsCountdownVal=60;actualizarGPS();}
-  },1000);
+    const el = document.getElementById('gps-countdown');
+    if (el) el.textContent = gpsCountdownVal;
+    if (gpsCountdownVal <= 0) { gpsCountdownVal = 30; actualizarGPS(); }
+  }, 1000);
+
+  // Suscribir Realtime para GPS en vivo
+  sb.channel('gps-rt')
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'pilotos' }, function() {
+      actualizarGPS();
+    })
+    .subscribe();
 }
 
 // ── UTILS ─────────────────────────────────────────
