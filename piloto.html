@@ -623,10 +623,15 @@ function toast(msg,tipo){
   clearTimeout(toastT);toastT=setTimeout(()=>el.className='',4000);
 }
 
-// Auto-login sesión activa
+// Auto-login sesión activa — redirige al login si no hay sesión
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
-  if(session)await iniciarApp(session.user);
+  if(session){
+    await iniciarApp(session.user);
+  } else {
+    // Sin sesión — redirigir al login
+    window.location.href='/';
+  }
 })();
 
 // Actualizar coordenadas en pantalla cada 10 seg
