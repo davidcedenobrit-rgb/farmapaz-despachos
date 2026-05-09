@@ -27,7 +27,12 @@ self.addEventListener('notificationclick', function(event) {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
       for (const c of list) {
-        if (c.url.includes('/piloto') && 'focus' in c) return c.focus();
+        if (c.url.includes('/piloto') && 'focus' in c) {
+          c.focus();
+          // Avisarle a la página que reactive GPS y recargue pedidos
+          c.postMessage({ tipo: 'NUEVO_PEDIDO' });
+          return;
+        }
       }
       if (clients.openWindow) return clients.openWindow('/piloto');
     })
