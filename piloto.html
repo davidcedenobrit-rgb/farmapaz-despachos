@@ -360,6 +360,8 @@ async function iniciarApp(user){
   setTimeout(activarGPS, 1000);
   // Pedir permiso de notificaciones
   setTimeout(iniciarPushNotifications, 2000);
+  // Mantener pantalla encendida
+  setTimeout(activarWakeLock, 3000);
 }
 
 async function doLogout(){
@@ -416,7 +418,7 @@ function activarGPS(){
   if(gpsUpdateTimer)clearInterval(gpsUpdateTimer);
   gpsUpdateTimer=setInterval(()=>{
     if(miLat&&miLng)guardarUbicacion();
-  },60000);
+  },30000);
 }
 
 function detenerGPS(){
@@ -502,11 +504,10 @@ function cardHTML(p){
   const descHTML=p.descripcion
     ?`<div class="pc-desc">📦 ${p.descripcion}</div>`:'';
 
-  // Teléfono + Maps
+  // Teléfono (sin mapa — el piloto usa la dirección escrita por el monitor)
   const telHTML=p.cliente_telefono?`
     <div class="pc-tel">
-      <a class="tel-btn" href="tel:${p.cliente_telefono}">📞 Llamar</a>
-      <a class="maps-btn" href="https://maps.google.com/?q=${encodeURIComponent(p.direccion)}" target="_blank">🗺 Ver mapa</a>
+      <a class="tel-btn" href="tel:${p.cliente_telefono}" style="flex:1;">📞 Llamar al cliente</a>
     </div>`:'';
 
   // Botones de acción
@@ -547,7 +548,7 @@ function cardHTML(p){
     </div>
     <div class="pc-body">
       <div class="pc-cliente">${p.cliente_nombre}</div>
-      <div class="pc-dir"><span class="pc-dir-ico">📍</span>${p.direccion}</div>
+      <div class="pc-dir" style="font-size:15px;color:var(--text);font-weight:600;background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;"><span class="pc-dir-ico">📍</span>${p.direccion}</div>
       ${descHTML}
       ${tiempoHTML}
       ${telHTML}
@@ -584,25 +585,30 @@ async function marcarEntregado(pedidoId){
 // ── REALTIME ──────────────────────────────────────
 function suscribirRealtime(){
   if(!piloto)return;
-  sb.channel('piloto-pedidos')
-    .on('postgres_changes',{
-      event:'INSERT',schema:'public',table:'pedidos',
-      filter:`piloto_id=eq.${piloto.id}`
-    }, payload => {
-      alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
-      cargarPedidos();
-    })
-    .on('postgres_changes',{
-      event:'UPDATE',schema:'public',table:'pedidos',
-      filter:`piloto_id=eq.${piloto.id}`
-    }, payload => {
-      // Alertar solo cuando se asigna (cambia a asignado)
-      if(payload.new.estado === 'asignado' && payload.old.estado !== 'asignado') {
-        alertaNuevoPedido(payload.new.numero_pedido, payload.new.cliente_nombre);
+
+  // SIN filtro server-side — Supabase requiere REPLICA IDENTITY FULL para
+  // filtros en UPDATE sobre columnas no-PK. Filtramos client-side en su lugar.
+  sb.channel('piloto-rt-' + piloto.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pedidos'}, payload => {
+      const row = payload.new || payload.old || {};
+      if(row.piloto_id !== piloto.id) return; // filtrar client-side
+
+      // Detectar nueva asignación comparando con estado actual en memoria
+      if(payload.eventType==='UPDATE'||payload.eventType==='INSERT'){
+        const estadoActual = pedidos.find(p=>p.id===row.id)?.estado;
+        if(row.estado==='asignado' && estadoActual!=='asignado'){
+          alertaNuevoPedido(row.numero_pedido, row.cliente_nombre);
+        }
       }
       cargarPedidos();
     })
-    .subscribe();
+    .subscribe(status=>{
+      console.log('[Realtime]', status);
+    });
+
+  // Polling de respaldo cada 30 seg (cubre desconexiones de websocket)
+  if(window._pollingTimer) clearInterval(window._pollingTimer);
+  window._pollingTimer = setInterval(cargarPedidos, 30000);
 }
 
 // ── UTILS ─────────────────────────────────────────
@@ -623,6 +629,14 @@ function toast(msg,tipo){
   clearTimeout(toastT);toastT=setTimeout(()=>el.className='',4000);
 }
 
+// Mensaje desde service worker al tocar notificación
+navigator.serviceWorker?.addEventListener('message', event => {
+  if(event.data?.tipo === 'NUEVO_PEDIDO'){
+    if(piloto) cargarPedidos();
+    if(usuario && !gpsWatchId) activarGPS();
+  }
+});
+
 // Auto-login sesión activa — redirige al login si no hay sesión
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
@@ -641,6 +655,37 @@ setInterval(()=>{
     el.textContent=`Ubicación activa · ${miLat.toFixed(4)}, ${miLng.toFixed(4)}`;
   });
 },10000);
+
+// ── WAKE LOCK (mantener pantalla encendida) ────────
+let wakeLock = null;
+async function activarWakeLock(){
+  try {
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('[WakeLock] Pantalla activa');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  } catch(e){ console.log('[WakeLock] No disponible:', e.message); }
+}
+
+// ── VISIBILITYCHANGE: cuando el piloto vuelve a la app ─
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.visibilityState==='visible'){
+    // Reactivar wake lock
+    if(!wakeLock) activarWakeLock();
+    // Refrescar pedidos inmediatamente
+    if(piloto) cargarPedidos();
+    // Reactivar GPS si se perdió
+    if(usuario && !gpsWatchId){
+      console.log('[GPS] Reactivando tras volver a la app...');
+      activarGPS();
+    }
+    // Reconectar realtime si se desconectó
+    if(piloto && !sb.getChannels().find(c=>c.topic.includes('piloto-rt'))){
+      suscribirRealtime();
+    }
+  }
+});
 </script>
 </body>
 </html>
