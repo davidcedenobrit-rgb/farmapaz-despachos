@@ -104,6 +104,14 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
 .act-entreg {background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3);color:#22c55e;}
 .act-cerrar {background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.3);color:#60a5fa;}
 
+.act-group{display:flex;gap:4px;align-items:center;}
+.act-icon{background:none;border:1px solid var(--border2);border-radius:5px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:all .15s;}
+.act-icon:hover{background:var(--bg4);}
+.act-icon.edit:hover{border-color:rgba(59,130,246,.5);color:#60a5fa;}
+.act-icon.del:hover{border-color:rgba(239,68,68,.5);color:#ef4444;}
+.modal-warn{border-color:rgba(239,68,68,.4);}
+.modal-warn h3{color:#f87171;}
+
 /* SIDEBAR */
 .sidebar{width:220px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
 .sb-sec{padding:14px;}
@@ -294,10 +302,11 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
             <th>TIEMPO</th>
             <th>GPS</th>
             <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="tbl-body">
-          <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando...</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)"><span class="spin"></span> Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -403,6 +412,43 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
     <div class="mact">
       <button class="mcancel" onclick="cerrarModal('m-nota')">Cancelar</button>
       <button class="mok" onclick="guardarNota()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PEDIDO -->
+<div class="overlay" id="m-editar">
+  <div class="modal">
+    <h3>✏️ Editar Pedido</h3>
+    <div class="frow"><label class="flbl">N° de Factura</label><input class="finp" id="e-factura" disabled></div>
+    <div class="frow"><label class="flbl">Nombre del cliente</label><input class="finp" id="e-nombre"></div>
+    <div class="frow"><label class="flbl">Teléfono</label><input class="finp" id="e-tel"></div>
+    <div class="frow"><label class="flbl">Dirección de entrega</label><input class="finp" id="e-dir"></div>
+    <div class="frow"><label class="flbl">Productos</label><textarea class="ftxt" id="e-desc"></textarea></div>
+    <div class="frow"><label class="flbl">Piloto asignado</label><select class="fsel" id="e-piloto"><option value="">— Sin piloto —</option></select></div>
+    <div class="frow"><label class="flbl">Estado</label><select class="fsel" id="e-estado">
+      <option value="pendiente">En espera</option>
+      <option value="asignado">Asignado</option>
+      <option value="en_ruta">En ruta</option>
+      <option value="entregado">Entregado</option>
+      <option value="cerrado">Cerrado</option>
+    </select></div>
+    <div class="mact">
+      <button class="mcancel" onclick="cerrarModal('m-editar')">Cancelar</button>
+      <button class="mok" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ELIMINACIÓN -->
+<div class="overlay" id="m-eliminar">
+  <div class="modal modal-warn">
+    <h3>🗑️ Eliminar Pedido</h3>
+    <p style="color:var(--muted2);font-size:13px;margin-bottom:6px;">¿Estás seguro de eliminar el pedido <strong style="color:var(--text)" id="del-num"></strong>?</p>
+    <p style="color:var(--red);font-size:11px;margin-bottom:16px;">Esta acción no se puede deshacer.</p>
+    <div class="mact">
+      <button class="mcancel" onclick="cerrarModal('m-eliminar')">Cancelar</button>
+      <button class="mok" style="background:linear-gradient(135deg,#b91c1c,#ef4444);" onclick="eliminarPedido()">Sí, eliminar</button>
     </div>
   </div>
 </div>
@@ -516,7 +562,7 @@ function renderTabla(){
   actualizarContadores();
   document.getElementById('tbl-count').textContent=lista.length+' pedidos';
   const body=document.getElementById('tbl-body');
-  if(!lista.length){body.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">📭 Sin pedidos en este estado</td></tr>`;return;}
+  if(!lista.length){body.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">📭 Sin pedidos en este estado</td></tr>`;return;}
   body.innerHTML=lista.map((p,i)=>rowHTML(p,i)).join('');
 }
 
@@ -571,6 +617,7 @@ function rowHTML(p,i){
     <td>${tiempoHTML}</td>
     <td>${gpsHTML}</td>
     <td>${accion}</td>
+    <td><div class="act-group"><button class="act-icon edit" title="Editar" onclick="abrirEditar('${p.id}')">✏️</button><button class="act-icon del" title="Eliminar" onclick="confirmarEliminar('${p.id}','${(p.numero_pedido||'').replace(/'/g,"\\'")}')">🗑️</button></div></td>
   </tr>`;
 }
 
@@ -703,6 +750,62 @@ async function cambiarEstado(id,estado){
   if(error){toast('Error','err');return;}
   const m={en_ruta:'🟠 En ruta',entregado:'✅ Entregado',cerrado:'Pedido cerrado'};
   toast(m[estado]||'Actualizado','ok');
+}
+
+// ── EDITAR PEDIDO ────────────────────────────────
+function abrirEditar(id){
+  selId=id;
+  const p=pedidos.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('e-factura').value=p.numero_pedido||'';
+  document.getElementById('e-nombre').value=p.cliente_nombre||'';
+  document.getElementById('e-tel').value=p.cliente_telefono||'';
+  document.getElementById('e-dir').value=p.direccion||'';
+  document.getElementById('e-desc').value=p.descripcion||'';
+  document.getElementById('e-estado').value=p.estado;
+  const sel=document.getElementById('e-piloto');
+  sel.innerHTML='<option value="">— Sin piloto —</option>';
+  pilotos.forEach(pl=>{
+    const o=document.createElement('option');
+    o.value=pl.id;o.textContent=pl.nombre+(pl.disponible?' ✅':' 🔴');
+    sel.appendChild(o);
+  });
+  sel.value=p.piloto_id||'';
+  abrirModal('m-editar');
+}
+
+async function guardarEdicion(){
+  const nombre=document.getElementById('e-nombre').value.trim();
+  const tel=document.getElementById('e-tel').value.trim();
+  const dir=document.getElementById('e-dir').value.trim();
+  const desc=document.getElementById('e-desc').value.trim();
+  const pilotoId=document.getElementById('e-piloto').value||null;
+  const estado=document.getElementById('e-estado').value;
+  if(!nombre||!dir){toast('Nombre y dirección son obligatorios','err');return;}
+  const update={cliente_nombre:nombre,cliente_telefono:tel||null,direccion:dir,descripcion:desc||null,estado,piloto_id:pilotoId};
+  if(pilotoId&&estado==='pendiente')update.estado='asignado';
+  if(!pilotoId&&estado==='asignado')update.estado='pendiente';
+  const {error}=await sb.from('pedidos').update(update).eq('id',selId);
+  if(error){toast('Error al guardar: '+error.message,'err');return;}
+  cerrarModal('m-editar');
+  toast('Pedido actualizado ✅','ok');
+}
+
+// ── ELIMINAR PEDIDO ──────────────────────────────
+let delId=null;
+function confirmarEliminar(id,num){
+  delId=id;
+  document.getElementById('del-num').textContent='#'+num;
+  abrirModal('m-eliminar');
+}
+
+async function eliminarPedido(){
+  if(!delId)return;
+  const {error}=await sb.from('pedidos').delete().eq('id',delId);
+  if(error){toast('Error al eliminar: '+error.message,'err');return;}
+  cerrarModal('m-eliminar');
+  delId=null;
+  toast('Pedido eliminado 🗑️','ok');
 }
 
 function abrirNotas(id){selId=id;const p=pedidos.find(x=>x.id===id);document.getElementById('nota-txt').value=p?.notas_monitor||'';abrirModal('m-nota');}
