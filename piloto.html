@@ -202,21 +202,53 @@ const NOTIF_URL = "https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-
 
 async function iniciarPushNotifications() {
   try {
-    if (!('serviceWorker' in navigator)) return;
-    await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      console.warn('[FCM] Service Worker o Notification API no disponible');
+      return;
+    }
+    console.log('[FCM] Registrando service worker...');
+    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    console.log('[FCM] Service worker registrado:', swReg.scope);
     await navigator.serviceWorker.ready;
+    console.log('[FCM] Service worker listo');
 
     const btn = document.getElementById('notif-btn');
+
     if (Notification.permission === 'granted') {
-      // Ya tiene permiso — registrar token y actualizar botón
       await registrarTokenFCM();
-      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
+      setBtnNotif(btn, 'activo');
     } else if (Notification.permission === 'denied') {
-      if (btn) { btn.textContent = '🔕 Bloqueado'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.borderColor = 'rgba(239,68,68,.3)'; btn.style.color = '#f87171'; }
+      setBtnNotif(btn, 'bloqueado');
+    } else {
+      // Permiso 'default' — pedir automáticamente
+      console.log('[FCM] Pidiendo permiso de notificaciones...');
+      const permiso = await Notification.requestPermission();
+      console.log('[FCM] Respuesta permiso:', permiso);
+      if (permiso === 'granted') {
+        await registrarTokenFCM();
+        setBtnNotif(btn, 'activo');
+        toast('🔔 Notificaciones activadas', 'ok');
+      } else {
+        setBtnNotif(btn, 'bloqueado');
+      }
     }
-    // Si es 'default' el botón queda amarillo para que lo active
   } catch(err) {
-    console.log('Push init error:', err.message);
+    console.error('[FCM] Push init error:', err);
+  }
+}
+
+function setBtnNotif(btn, estado) {
+  if (!btn) return;
+  if (estado === 'activo') {
+    btn.textContent = '🔔 Activo';
+    btn.style.background = 'rgba(34,197,94,.1)';
+    btn.style.borderColor = 'rgba(34,197,94,.3)';
+    btn.style.color = '#4ade80';
+  } else {
+    btn.textContent = '🔕 Bloqueado';
+    btn.style.background = 'rgba(239,68,68,.1)';
+    btn.style.borderColor = 'rgba(239,68,68,.3)';
+    btn.style.color = '#f87171';
   }
 }
 
@@ -229,22 +261,21 @@ async function activarNotificaciones() {
     }
     if (Notification.permission === 'granted') {
       await registrarTokenFCM();
-      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
-      toast('🔔 Notificaciones activadas ✅', 'ok');
+      setBtnNotif(btn, 'activo');
+      toast('🔔 Notificaciones activadas', 'ok');
       return;
     }
-    // Pedir permiso
     const permiso = await Notification.requestPermission();
     if (permiso === 'granted') {
       await registrarTokenFCM();
-      if (btn) { btn.textContent = '🔔 Activo'; btn.style.background = 'rgba(34,197,94,.1)'; btn.style.borderColor = 'rgba(34,197,94,.3)'; btn.style.color = '#4ade80'; }
-      toast('🔔 Notificaciones activadas ✅', 'ok');
+      setBtnNotif(btn, 'activo');
+      toast('🔔 Notificaciones activadas', 'ok');
     } else {
-      if (btn) { btn.textContent = '🔕 Bloqueado'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.borderColor = 'rgba(239,68,68,.3)'; btn.style.color = '#f87171'; }
+      setBtnNotif(btn, 'bloqueado');
       toast('Ve a Ajustes del navegador → Permitir notificaciones para este sitio', 'err');
     }
   } catch(err) {
-    console.log('Error:', err.message);
+    console.error('[FCM] Error activando:', err);
   }
 }
 
@@ -362,8 +393,8 @@ async function iniciarApp(user){
   suscribirRealtime();
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
-  // Pedir permiso de notificaciones
-  setTimeout(iniciarPushNotifications, 2000);
+  // Pedir permiso de notificaciones (rápido para que aparezca el popup)
+  setTimeout(iniciarPushNotifications, 500);
   // Mantener pantalla encendida
   setTimeout(activarWakeLock, 3000);
 }
@@ -641,15 +672,13 @@ navigator.serviceWorker?.addEventListener('message', event => {
   }
 });
 
-// Auto-login sesión activa — redirige al login si no hay sesión
+// Auto-login sesión activa
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session){
     await iniciarApp(session.user);
-  } else {
-    // Sin sesión — redirigir al login
-    window.location.href='/';
   }
+  // Sin sesión: se queda en el login del piloto
 })();
 
 // Actualizar coordenadas en pantalla cada 10 seg
