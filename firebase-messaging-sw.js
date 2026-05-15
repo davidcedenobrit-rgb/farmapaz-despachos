@@ -22,6 +22,11 @@ messaging.onBackgroundMessage(function(payload) {
   });
 });
 
+// Fetch handler required for PWA installability
+self.addEventListener('fetch', function(event) {
+  event.respondWith(fetch(event.request));
+});
+
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
