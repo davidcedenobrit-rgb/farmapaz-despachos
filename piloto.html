@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Farmapaz · Piloto</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#f97316">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Farmapaz">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -100,6 +106,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .footer-txt{font-size:10px;color:var(--muted);}
 .logout-btn{background:none;border:none;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;padding:4px 0;}
 
+/* INSTALL BANNER */
+#install-banner{display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#1a1020,#0f1119);border-top:2px solid var(--orange);padding:16px 18px;z-index:200;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.ib-row{display:flex;align-items:center;gap:14px;}
+.ib-icon{width:48px;height:48px;border-radius:12px;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.ib-text{flex:1;}
+.ib-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;}
+.ib-sub{font-size:11px;color:var(--muted2);margin-top:2px;line-height:1.4;}
+.ib-actions{display:flex;gap:8px;margin-top:12px;}
+.ib-install{flex:1;background:linear-gradient(135deg,#c45a0a,#f97316);border:none;border-radius:10px;padding:14px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;cursor:pointer;}
+.ib-later{background:none;border:1px solid var(--border2);border-radius:10px;padding:14px 18px;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;}
+
 /* TOAST */
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap;text-align:center;max-width:90vw;}
 #toast.show{transform:translateX(-50%) translateY(0);}
@@ -162,6 +180,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
     <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
   </div>
 
+</div>
+
+<!-- INSTALL BANNER -->
+<div id="install-banner">
+  <div class="ib-row">
+    <div class="ib-icon">🏍️</div>
+    <div class="ib-text">
+      <div class="ib-title">Instalar Farmapaz</div>
+      <div class="ib-sub">Instala la app para recibir notificaciones aunque no tengas el navegador abierto</div>
+    </div>
+  </div>
+  <div class="ib-actions">
+    <button class="ib-install" onclick="instalarApp()">INSTALAR APP</button>
+    <button class="ib-later" onclick="cerrarBannerInstall()">Luego</button>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -395,6 +428,8 @@ async function iniciarApp(user){
   setTimeout(activarGPS, 1000);
   // Pedir permiso de notificaciones (rápido para que aparezca el popup)
   setTimeout(iniciarPushNotifications, 500);
+  // Mostrar banner de instalación PWA si aplica
+  setTimeout(checkInstallBanner, 1500);
   // Mantener pantalla encendida
   setTimeout(activarWakeLock, 3000);
 }
@@ -699,6 +734,54 @@ async function activarWakeLock(){
       wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
     }
   } catch(e){ console.log('[WakeLock] No disponible:', e.message); }
+}
+
+// ── PWA INSTALL ──────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  console.log('[PWA] Install prompt capturado');
+  // Mostrar banner solo si está logueado
+  if (usuario) mostrarBannerInstall();
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App instalada');
+  deferredPrompt = null;
+  document.getElementById('install-banner').style.display = 'none';
+  toast('App instalada. Las notificaciones llegarán aunque cierres el navegador.', 'ok');
+});
+
+function mostrarBannerInstall() {
+  // No mostrar si ya la descartó en esta sesión
+  if (sessionStorage.getItem('install-dismissed')) return;
+  // No mostrar si ya está instalada (standalone)
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  document.getElementById('install-banner').style.display = 'block';
+}
+
+async function instalarApp() {
+  if (!deferredPrompt) {
+    toast('Usa el menú del navegador → "Instalar app" o "Agregar a pantalla de inicio"', 'info');
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  console.log('[PWA] Resultado:', outcome);
+  deferredPrompt = null;
+  document.getElementById('install-banner').style.display = 'none';
+}
+
+function cerrarBannerInstall() {
+  document.getElementById('install-banner').style.display = 'none';
+  sessionStorage.setItem('install-dismissed', '1');
+}
+
+// Mostrar banner si el prompt ya llegó antes del login
+function checkInstallBanner() {
+  if (deferredPrompt && usuario) mostrarBannerInstall();
 }
 
 // ── VISIBILITYCHANGE: cuando el piloto vuelve a la app ─
