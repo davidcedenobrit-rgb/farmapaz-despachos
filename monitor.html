@@ -731,9 +731,10 @@ async function confirmarAsignacion(){
     // Obtener FCM token del piloto
     const {data:pilotData}=await sb.from('pilotos').select('fcm_token,nombre').eq('id',pid).single();
     if(pilotData?.fcm_token){
+      const {data:{session:sess}}=await sb.auth.getSession();
       await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+(sess?.access_token||'')},
         body:JSON.stringify({
           fcm_token: pilotData.fcm_token,
           titulo: '🏍️ Nuevo pedido asignado',

@@ -254,9 +254,13 @@ async function registrarTokenFCM() {
     const messaging = firebase.messaging();
     const swReg = await navigator.serviceWorker.ready;
     const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+    console.log('[FCM] token obtenido:', !!token, 'usuario:', !!usuario, 'id:', usuario?.id);
     if (token && usuario) {
-      await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
-      console.log('FCM token guardado ✅');
+      const {error:updErr}=await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
+      if(updErr) console.error('[FCM] Error guardando token:', updErr.message);
+      else console.log('[FCM] Token guardado ✅');
+    } else {
+      console.warn('[FCM] No se guardó token - token:', !!token, 'usuario:', !!usuario);
     }
     messaging.onMessage(function(payload) {
       sonarAlarma();
