@@ -314,18 +314,43 @@ async function activarNotificaciones() {
 
 async function registrarTokenFCM() {
   try {
+    toast('Paso 1: Iniciando Firebase...', 'info');
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     const messaging = firebase.messaging();
+
+    toast('Paso 2: Esperando Service Worker...', 'info');
     const swReg = await navigator.serviceWorker.ready;
+
+    toast('Paso 3: Obteniendo token FCM...', 'info');
     const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
-    console.log('[FCM] token obtenido:', !!token, 'usuario:', !!usuario, 'id:', usuario?.id);
-    if (token && usuario) {
-      const {error:updErr}=await sb.from('pilotos').update({ fcm_token: token }).eq('profile_id', usuario.id);
-      if(updErr) console.error('[FCM] Error guardando token:', updErr.message);
-      else console.log('[FCM] Token guardado ✅');
-    } else {
-      console.warn('[FCM] No se guardó token - token:', !!token, 'usuario:', !!usuario);
+
+    if (!token) {
+      toast('ERROR: No se obtuvo token FCM', 'err');
+      console.error('[FCM] getToken devolvió null/undefined');
+      return;
     }
+
+    console.log('[FCM] Token:', token.substring(0, 20) + '...');
+    toast('Paso 4: Guardando token en DB...', 'info');
+
+    if (!usuario) {
+      toast('ERROR: Usuario no disponible', 'err');
+      return;
+    }
+
+    const {error:updErr, count} = await sb.from('pilotos')
+      .update({ fcm_token: token })
+      .eq('profile_id', usuario.id)
+      .select();
+
+    if (updErr) {
+      toast('ERROR DB: ' + updErr.message, 'err');
+      console.error('[FCM] Error guardando:', updErr);
+    } else {
+      toast('Token FCM guardado OK', 'ok');
+      console.log('[FCM] Token guardado ✅');
+    }
+
     messaging.onMessage(function(payload) {
       sonarAlarma();
       vibrarTelefono();
@@ -333,7 +358,8 @@ async function registrarTokenFCM() {
       setTimeout(cargarPedidos, 1000);
     });
   } catch(err) {
-    console.log('Error registrando FCM:', err.message);
+    toast('ERROR FCM: ' + err.message, 'err');
+    console.error('[FCM] Error registrando:', err);
   }
 }
 let tiempoTimers={};
