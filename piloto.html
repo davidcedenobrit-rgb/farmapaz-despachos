@@ -311,21 +311,39 @@ function setBtnNotif(btn, estado) {
 async function activarNotificaciones() {
   const btn = document.getElementById('notif-btn');
   try {
-    if (Notification.permission === 'denied') {
-      toast('Notificaciones bloqueadas. Ve a Ajustes del navegador → Permisos → Notificaciones → Permitir', 'err');
+    // Si OneSignal aún no terminó de cargar, reintentar en 2 segundos
+    if (!window._oneSignalReady) {
+      toast('Cargando sistema de notificaciones, reintentando...', 'info');
+      setTimeout(activarNotificaciones, 2000);
       return;
     }
-    const granted = await OneSignal.Notifications.requestPermission();
-    if (granted) {
-      await registrarPlayerIdOneSignal();
-      setBtnNotif(btn, 'activo');
-      toast('🔔 Notificaciones activadas', 'ok');
-    } else {
+
+    const permiso = Notification.permission;
+
+    if (permiso === 'denied') {
       setBtnNotif(btn, 'bloqueado');
-      toast('Permite las notificaciones para recibir pedidos', 'err');
+      toast('Notificaciones bloqueadas — ve a Ajustes del sistema y actívalas para esta app', 'err');
+      return;
     }
+
+    // Si el permiso NO está dado aún, pedirlo
+    if (permiso !== 'granted') {
+      const granted = await OneSignal.Notifications.requestPermission();
+      if (!granted) {
+        setBtnNotif(btn, 'bloqueado');
+        toast('Debes permitir las notificaciones para recibir pedidos', 'err');
+        return;
+      }
+    }
+
+    // Permiso dado — registrar suscripción y vincular usuario
+    toast('Activando notificaciones...', 'info');
+    await registrarPlayerIdOneSignal();
+    setBtnNotif(btn, 'activo');
+    toast('🔔 Notificaciones activadas correctamente', 'ok');
   } catch(err) {
     console.error('[OneSignal] Error activando:', err);
+    toast('Error al activar: ' + err.message, 'err');
   }
 }
 
@@ -338,8 +356,14 @@ async function registrarPlayerIdOneSignal() {
     console.log('[OneSignal] optedIn antes de login:', optedIn);
     if (!optedIn) {
       console.log('[OneSignal] Activando suscripción push...');
-      await OneSignal.User.PushSubscription.optIn();
-      await new Promise(r => setTimeout(r, 2000));
+      try {
+        await OneSignal.User.PushSubscription.optIn();
+        await new Promise(r => setTimeout(r, 2000));
+      } catch(optErr) {
+        console.error('[OneSignal] optIn() falló:', optErr);
+        toast('Error al crear suscripción push: ' + optErr.message, 'err');
+        throw optErr;
+      }
     }
 
     // Vincular UUID de Supabase como external_id
