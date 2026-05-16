@@ -33,6 +33,12 @@
       notifyButton: { enable: false },
       promptOptions: { slidedown: { enabled: false } }
     });
+    window._oneSignalReady = true;
+    console.log('[OneSignal] Init completo ✅');
+    // Si el usuario ya estaba logueado, iniciar push ahora
+    if (window._pendingPushUserId) {
+      iniciarPushNotifications();
+    }
   });
 </script>
 
@@ -247,29 +253,33 @@ async function iniciarPushNotifications() {
   try {
     if (!('Notification' in window)) return;
     const btn = document.getElementById('notif-btn');
-    // Esperar a que OneSignal esté listo
-    await new Promise(r => {
-      if (window.OneSignal) { r(); return; }
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(() => r());
-      setTimeout(r, 3000);
-    });
-    const permiso = Notification.permission;
-    if (permiso === 'granted') {
-      await registrarPlayerIdOneSignal();
-      setBtnNotif(btn, 'activo');
-    } else if (permiso === 'denied') {
-      setBtnNotif(btn, 'bloqueado');
-    } else {
-      const granted = await OneSignal.Notifications.requestPermission();
-      if (granted) {
-        await registrarPlayerIdOneSignal();
-        setBtnNotif(btn, 'activo');
-        toast('🔔 Notificaciones activadas', 'ok');
-      } else {
-        setBtnNotif(btn, 'bloqueado');
-      }
+
+    // Esperar a que OneSignal.init() haya completado
+    if (!window._oneSignalReady) {
+      // Se llamará de nuevo desde el deferred cuando esté listo
+      window._pendingPushUserId = usuario?.id;
+      console.log('[OneSignal] No listo aún, esperando init...');
+      return;
     }
+    window._pendingPushUserId = null;
+
+    const permiso = Notification.permission;
+    console.log('[OneSignal] Permiso navegador:', permiso);
+
+    if (permiso === 'denied') {
+      setBtnNotif(btn, 'bloqueado');
+      return;
+    }
+
+    if (permiso !== 'granted') {
+      const granted = await OneSignal.Notifications.requestPermission();
+      if (!granted) { setBtnNotif(btn, 'bloqueado'); return; }
+      toast('🔔 Notificaciones activadas', 'ok');
+    }
+
+    await registrarPlayerIdOneSignal();
+    setBtnNotif(btn, 'activo');
+
     // Escuchar notificaciones en foreground
     OneSignal.Notifications.addEventListener('foregroundWillDisplay', (e) => {
       e.preventDefault();
@@ -322,18 +332,34 @@ async function activarNotificaciones() {
 async function registrarPlayerIdOneSignal() {
   try {
     if (!usuario) return;
-    // Vincular el usuario de Supabase con OneSignal
-    await OneSignal.login(usuario.id);
-    const playerId = await OneSignal.User.PushSubscription.id;
-    if (!playerId) {
-      console.warn('[OneSignal] No se obtuvo playerId aún, se usará external_id');
-      return;
+
+    // Asegurar que la suscripción push esté activa
+    const optedIn = OneSignal.User.PushSubscription.optedIn;
+    console.log('[OneSignal] optedIn antes de login:', optedIn);
+    if (!optedIn) {
+      console.log('[OneSignal] Activando suscripción push...');
+      await OneSignal.User.PushSubscription.optIn();
+      await new Promise(r => setTimeout(r, 2000));
     }
-    const { error } = await sb.from('pilotos')
-      .update({ fcm_token: playerId })
-      .eq('profile_id', usuario.id);
-    if (error) console.error('[OneSignal] Error guardando playerId:', error);
-    else console.log('[OneSignal] Player ID guardado ✅');
+
+    // Vincular UUID de Supabase como external_id
+    await OneSignal.login(usuario.id);
+    console.log('[OneSignal] login() con external_id:', usuario.id);
+
+    const playerId = OneSignal.User.PushSubscription.id;
+    const optedInFinal = OneSignal.User.PushSubscription.optedIn;
+    console.log('[OneSignal] optedIn final:', optedInFinal, '| subscriptionId:', playerId);
+
+    if (!playerId) {
+      console.warn('[OneSignal] No se obtuvo subscriptionId. El external_id fue registrado igualmente.');
+      // No abortamos — el external_id puede funcionar sin guardar el subscription ID
+    } else {
+      const { error } = await sb.from('pilotos')
+        .update({ fcm_token: playerId })
+        .eq('profile_id', usuario.id);
+      if (error) console.error('[OneSignal] Error guardando subscriptionId:', error);
+      else console.log('[OneSignal] Subscription ID guardado en DB ✅', playerId);
+    }
   } catch(err) {
     console.error('[OneSignal] Error registrando:', err);
   }
@@ -428,8 +454,10 @@ async function iniciarApp(user){
   suscribirRealtime();
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
-  // Pedir permiso de notificaciones (rápido para que aparezca el popup)
-  setTimeout(iniciarPushNotifications, 500);
+  // Registrar para push — si OneSignal ya está listo lo hacemos ahora,
+  // si no, el deferred lo ejecutará cuando init() termine
+  window._pendingPushUserId = user.id;
+  setTimeout(iniciarPushNotifications, 800);
   // Mostrar banner de instalación PWA si aplica
   setTimeout(checkInstallBanner, 1500);
   // Mantener pantalla encendida

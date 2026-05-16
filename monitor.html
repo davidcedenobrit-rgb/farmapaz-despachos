@@ -728,9 +728,10 @@ async function confirmarAsignacion(){
 
   // Enviar notificación push al piloto via OneSignal
   try {
-    const {data:pilotData}=await sb.from('pilotos').select('profile_id,nombre').eq('id',pid).single();
+    const {data:pilotData}=await sb.from('pilotos').select('profile_id,nombre,fcm_token').eq('id',pid).single();
+    console.log('[Push] Piloto:', pilotData?.nombre, '| profile_id:', pilotData?.profile_id, '| fcm_token:', pilotData?.fcm_token);
     if(pilotData?.profile_id){
-      await fetch('https://onesignal.com/api/v1/notifications',{
+      const pushResp=await fetch('https://onesignal.com/api/v1/notifications',{
         method:'POST',
         headers:{
           'Content-Type':'application/json',
@@ -746,9 +747,13 @@ async function confirmarAsignacion(){
           priority:10
         })
       });
-      console.log('Push OneSignal enviado a',pilotData.nombre,'(id:',pilotData.profile_id+')');
+      const pushData=await pushResp.json();
+      console.log('[Push] Respuesta OneSignal:', JSON.stringify(pushData));
+      if(pushData.recipients===0) toast('⚠️ Push enviado pero 0 receptores — piloto debe activar notificaciones','err');
+      else if(pushData.errors) toast('⚠️ Error push: '+JSON.stringify(pushData.errors),'err');
+      else toast('🔔 Notificación enviada al piloto ('+pushData.recipients+' dispositivo/s)','ok');
     }
-  } catch(e){ console.log('Notificación no enviada:', e.message); }
+  } catch(e){ console.log('[Push] Error:', e.message); }
 }
 
 async function cambiarEstado(id,estado){
