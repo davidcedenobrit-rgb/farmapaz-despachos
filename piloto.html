@@ -13,11 +13,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Limpiar service workers viejos de Firebase
+  // Limpiar service workers que no sean de OneSignal
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => {
-        if (r.active && r.active.scriptURL.includes('firebase-messaging-sw')) {
+        const url = r.active?.scriptURL || r.installing?.scriptURL || '';
+        if (!url.includes('OneSignalSDKWorker')) {
+          console.log('[SW] Eliminando SW conflictivo:', url);
           r.unregister();
         }
       });
@@ -28,14 +30,23 @@
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "9cdcd38a-95fa-48f4-ada4-fabfa062cf7f",
-      notifyButton: { enable: false },
-      promptOptions: { slidedown: { enabled: false } }
-    });
+    try {
+      await Promise.race([
+        OneSignal.init({
+          appId: "9cdcd38a-95fa-48f4-ada4-fabfa062cf7f",
+          notifyButton: { enable: false },
+          promptOptions: { slidedown: { enabled: false } },
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/' }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 8s')), 8000))
+      ]);
+      console.log('[OneSignal] Init completo ✅');
+    } catch(err) {
+      console.error('[OneSignal] Init falló:', err.message);
+      window._oneSignalInitError = err.message;
+    }
     window._oneSignalReady = true;
-    console.log('[OneSignal] Init completo ✅');
-    // Si el usuario ya estaba logueado, iniciar push ahora
     if (window._pendingPushUserId) {
       iniciarPushNotifications();
     }
@@ -315,6 +326,10 @@ async function activarNotificaciones() {
     if (!window._oneSignalReady) {
       toast('Cargando sistema de notificaciones, reintentando...', 'info');
       setTimeout(activarNotificaciones, 2000);
+      return;
+    }
+    if (window._oneSignalInitError) {
+      toast('Error OneSignal: ' + window._oneSignalInitError, 'err');
       return;
     }
 
