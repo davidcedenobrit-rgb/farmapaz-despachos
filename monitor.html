@@ -728,8 +728,8 @@ async function confirmarAsignacion(){
 
   // Enviar notificación push al piloto via OneSignal
   try {
-    const {data:pilotData}=await sb.from('pilotos').select('fcm_token,nombre').eq('id',pid).single();
-    if(pilotData?.fcm_token){
+    const {data:pilotData}=await sb.from('pilotos').select('profile_id,nombre').eq('id',pid).single();
+    if(pilotData?.profile_id){
       await fetch('https://onesignal.com/api/v1/notifications',{
         method:'POST',
         headers:{
@@ -738,7 +738,7 @@ async function confirmarAsignacion(){
         },
         body:JSON.stringify({
           app_id:'9cdcd38a-95fa-48f4-ada4-fabfa062cf7f',
-          include_aliases:{ external_id:[usuario?.id] },
+          include_aliases:{ external_id:[pilotData.profile_id] },
           target_channel:'push',
           headings:{en:'🏍️ Nuevo pedido asignado'},
           contents:{en:'#'+(pedido?.numero_pedido||'')+' · '+(pedido?.cliente_nombre||'')+' · '+(pedido?.direccion||'')},
@@ -746,7 +746,7 @@ async function confirmarAsignacion(){
           priority:10
         })
       });
-      console.log('Push OneSignal enviado a',pilotData.nombre);
+      console.log('Push OneSignal enviado a',pilotData.nombre,'(id:',pilotData.profile_id+')');
     }
   } catch(e){ console.log('Notificación no enviada:', e.message); }
 }
