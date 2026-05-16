@@ -13,48 +13,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Limpiar TODOS los SW para garantizar un estado limpio
-  // La promesa se guarda para que OneSignal la espere antes de init()
-  window._swCleanup = ('serviceWorker' in navigator)
-    ? navigator.serviceWorker.getRegistrations()
-        .then(regs => {
-          console.log('[SW] Encontrados:', regs.length, 'service workers');
-          return Promise.all(regs.map(r => {
-            console.log('[SW] Eliminando:', r.active?.scriptURL || 'pendiente');
-            return r.unregister();
-          }));
-        })
-        .then(() => console.log('[SW] Limpieza completa ✅'))
-        .catch(e => console.warn('[SW] Error en limpieza:', e.message))
-    : Promise.resolve();
-</script>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    try {
-      // Esperar que se limpien todos los SW antes de registrar el nuevo
-      await window._swCleanup;
-      await Promise.race([
-        OneSignal.init({
-          appId: "9cdcd38a-95fa-48f4-ada4-fabfa062cf7f",
-          notifyButton: { enable: false },
-          promptOptions: { slidedown: { enabled: false } },
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          serviceWorkerParam: { scope: '/' }
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 10s')), 10000))
-      ]);
-      console.log('[OneSignal] Init completo ✅');
-    } catch(err) {
-      console.error('[OneSignal] Init falló:', err.message);
-      window._oneSignalInitError = err.message;
-    }
-    window._oneSignalReady = true;
-    if (window._pendingPushUserId) {
-      iniciarPushNotifications();
-    }
-  });
+  // Registrar service worker propio (sin dependencias externas)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(r => console.log('[SW] Registrado ✅', r.scope))
+      .catch(e => console.error('[SW] Error registrando:', e.message));
+  }
 </script>
 
 <style>
@@ -263,48 +227,25 @@ let usuario=null, perfil=null, piloto=null;
 let pedidos=[], miLat=null, miLng=null;
 let gpsWatchId=null, gpsUpdateTimer=null;
 
-// OneSignal Push Notifications
+const VAPID_PUBLIC_KEY = 'BBb0o9NATzdXywhI-7H54GmyT0IpNTsi3G0-cwc4n7wqWe0UB79r3vNhkV_IqiN8hOnJ_HJ1mM14aVDc1p5PoT4';
+
+function urlBase64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+// Push Notifications — Web Push nativo (sin dependencias externas)
 async function iniciarPushNotifications() {
-  try {
-    if (!('Notification' in window)) return;
-    const btn = document.getElementById('notif-btn');
-
-    // Esperar a que OneSignal.init() haya completado
-    if (!window._oneSignalReady) {
-      // Se llamará de nuevo desde el deferred cuando esté listo
-      window._pendingPushUserId = usuario?.id;
-      console.log('[OneSignal] No listo aún, esperando init...');
-      return;
-    }
-    window._pendingPushUserId = null;
-
-    const permiso = Notification.permission;
-    console.log('[OneSignal] Permiso navegador:', permiso);
-
-    if (permiso === 'denied') {
-      setBtnNotif(btn, 'bloqueado');
-      return;
-    }
-
-    if (permiso !== 'granted') {
-      const granted = await OneSignal.Notifications.requestPermission();
-      if (!granted) { setBtnNotif(btn, 'bloqueado'); return; }
-      toast('🔔 Notificaciones activadas', 'ok');
-    }
-
-    await registrarPlayerIdOneSignal();
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  const btn = document.getElementById('notif-btn');
+  const permiso = Notification.permission;
+  if (permiso === 'granted') {
+    await registrarPushSubscription();
     setBtnNotif(btn, 'activo');
-
-    // Escuchar notificaciones en foreground
-    OneSignal.Notifications.addEventListener('foregroundWillDisplay', (e) => {
-      e.preventDefault();
-      sonarAlarma();
-      vibrarTelefono();
-      toast('🔔 ' + (e.notification?.title || 'Nuevo pedido'), 'info');
-      setTimeout(cargarPedidos, 1000);
-    });
-  } catch(err) {
-    console.error('[OneSignal] Push init error:', err);
+  } else if (permiso === 'denied') {
+    setBtnNotif(btn, 'bloqueado');
   }
 }
 
@@ -326,86 +267,43 @@ function setBtnNotif(btn, estado) {
 async function activarNotificaciones() {
   const btn = document.getElementById('notif-btn');
   try {
-    // Si OneSignal aún no terminó de cargar, reintentar en 2 segundos
-    if (!window._oneSignalReady) {
-      toast('Cargando sistema de notificaciones, reintentando...', 'info');
-      setTimeout(activarNotificaciones, 2000);
+    if (!('PushManager' in window)) {
+      toast('Este navegador no soporta notificaciones push', 'err');
       return;
     }
-    if (window._oneSignalInitError) {
-      toast('Error OneSignal: ' + window._oneSignalInitError, 'err');
-      return;
-    }
-
-    const permiso = Notification.permission;
-
-    if (permiso === 'denied') {
+    if (Notification.permission === 'denied') {
       setBtnNotif(btn, 'bloqueado');
-      toast('Notificaciones bloqueadas — ve a Ajustes del sistema y actívalas para esta app', 'err');
+      toast('Notificaciones bloqueadas — actívalas en Ajustes del sistema para esta app', 'err');
       return;
     }
-
-    // Si el permiso NO está dado aún, pedirlo
-    if (permiso !== 'granted') {
-      const granted = await OneSignal.Notifications.requestPermission();
-      if (!granted) {
-        setBtnNotif(btn, 'bloqueado');
-        toast('Debes permitir las notificaciones para recibir pedidos', 'err');
-        return;
-      }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      setBtnNotif(btn, 'bloqueado');
+      toast('Debes permitir las notificaciones para recibir pedidos', 'err');
+      return;
     }
-
-    // Permiso dado — registrar suscripción y vincular usuario
     toast('Activando notificaciones...', 'info');
-    await registrarPlayerIdOneSignal();
+    await registrarPushSubscription();
     setBtnNotif(btn, 'activo');
-    toast('🔔 Notificaciones activadas correctamente', 'ok');
+    toast('🔔 Notificaciones activadas', 'ok');
   } catch(err) {
-    console.error('[OneSignal] Error activando:', err);
-    toast('Error al activar: ' + err.message, 'err');
+    console.error('[Push] Error activando:', err);
+    toast('Error: ' + err.message, 'err');
   }
 }
 
-async function registrarPlayerIdOneSignal() {
-  try {
-    if (!usuario) return;
-
-    // Asegurar que la suscripción push esté activa
-    const optedIn = OneSignal.User.PushSubscription.optedIn;
-    console.log('[OneSignal] optedIn antes de login:', optedIn);
-    if (!optedIn) {
-      console.log('[OneSignal] Activando suscripción push...');
-      try {
-        await OneSignal.User.PushSubscription.optIn();
-        await new Promise(r => setTimeout(r, 2000));
-      } catch(optErr) {
-        console.error('[OneSignal] optIn() falló:', optErr);
-        toast('Error al crear suscripción push: ' + optErr.message, 'err');
-        throw optErr;
-      }
-    }
-
-    // Vincular UUID de Supabase como external_id
-    await OneSignal.login(usuario.id);
-    console.log('[OneSignal] login() con external_id:', usuario.id);
-
-    const playerId = OneSignal.User.PushSubscription.id;
-    const optedInFinal = OneSignal.User.PushSubscription.optedIn;
-    console.log('[OneSignal] optedIn final:', optedInFinal, '| subscriptionId:', playerId);
-
-    if (!playerId) {
-      console.warn('[OneSignal] No se obtuvo subscriptionId. El external_id fue registrado igualmente.');
-      // No abortamos — el external_id puede funcionar sin guardar el subscription ID
-    } else {
-      const { error } = await sb.from('pilotos')
-        .update({ fcm_token: playerId })
-        .eq('profile_id', usuario.id);
-      if (error) console.error('[OneSignal] Error guardando subscriptionId:', error);
-      else console.log('[OneSignal] Subscription ID guardado en DB ✅', playerId);
-    }
-  } catch(err) {
-    console.error('[OneSignal] Error registrando:', err);
-  }
+async function registrarPushSubscription() {
+  if (!usuario) return;
+  const registration = await navigator.serviceWorker.ready;
+  const sub = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  });
+  const { error } = await sb.from('pilotos')
+    .update({ fcm_token: JSON.stringify(sub) })
+    .eq('profile_id', usuario.id);
+  if (error) throw new Error('Error guardando suscripción: ' + error.message);
+  console.log('[Push] Suscripción guardada ✅', sub.endpoint);
 }
 let tiempoTimers={};
 
@@ -497,9 +395,6 @@ async function iniciarApp(user){
   suscribirRealtime();
   // Activar GPS automáticamente al entrar
   setTimeout(activarGPS, 1000);
-  // Registrar para push — si OneSignal ya está listo lo hacemos ahora,
-  // si no, el deferred lo ejecutará cuando init() termine
-  window._pendingPushUserId = user.id;
   setTimeout(iniciarPushNotifications, 800);
   // Mostrar banner de instalación PWA si aplica
   setTimeout(checkInstallBanner, 1500);
