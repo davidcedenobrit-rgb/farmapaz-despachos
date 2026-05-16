@@ -326,7 +326,7 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
 
   <div class="app-footer">
     <div class="ft-left"><div class="ft-dot"></div><span class="ft-txt">SISTEMA EN VIVO · Farmapaz · Navi Dev</span></div>
-    <div class="ft-right">Auto-actualización cada 15 seg</div>
+    <div class="ft-right" style="display:flex;align-items:center;gap:14px;"><a href="/guia" target="_blank" style="color:var(--orange);font-size:11px;font-weight:600;text-decoration:none;border:1px solid rgba(249,115,22,.3);border-radius:6px;padding:4px 10px;">📋 Guía del Piloto</a><span style="color:var(--muted);font-size:11px;">Auto-actualización cada 15 seg</span></div>
   </div>
 </div>
 
@@ -588,8 +588,11 @@ function rowHTML(p,i){
     tiempoHTML=`<span class="td-tiempo ${cls}">${formatTiempo(mins)}</span>`;
   }
 
+  const pushBadge=p.push_notificado_at
+    ?`<div style="font-size:10px;color:#4ade80;margin-top:3px;display:flex;align-items:center;gap:3px;"><span>📱</span><span>Push ${formatHora(p.push_notificado_at)}</span></div>`
+    :'';
   const pilotoHTML=pNom
-    ?`<div class="pilot-chip"><div class="pav ${avCls}">${pInit}</div><span style="font-size:12px;font-weight:500">${pNom}</span></div>`
+    ?`<div><div class="pilot-chip"><div class="pav ${avCls}">${pInit}</div><span style="font-size:12px;font-weight:500">${pNom}</span></div>${pushBadge}</div>`
     :`<span style="color:var(--muted);font-size:12px">—</span>`;
 
   // GPS
@@ -740,8 +743,12 @@ async function confirmarAsignacion(){
     });
     const pushData = await pushResp.json();
     console.log('[Push] Respuesta:', pushData);
-    if(pushData.ok) toast('🔔 Notificación enviada a '+pushData.piloto,'ok');
-    else toast('⚠️ Push: '+(pushData.error||'sin respuesta'),'err');
+    if(pushData.ok){
+      toast('🔔 Notificación enviada a '+pushData.piloto,'ok');
+      await sb.from('pedidos').update({push_notificado_at:new Date().toISOString()}).eq('id',selId);
+    } else {
+      toast('⚠️ Push: '+(pushData.error||'sin respuesta'),'err');
+    }
   } catch(e){ console.log('[Push] Error:', e.message); }
 }
 
@@ -1189,6 +1196,7 @@ function iniciarGPSCountdown() {
 // ── UTILS ─────────────────────────────────────────
 function minutosDesde(iso){if(!iso)return 0;return Math.floor((Date.now()-new Date(iso).getTime())/60000);}
 function formatTiempo(m){if(m<60)return `${String(m).padStart(2,'0')}:00`;return `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;}
+function formatHora(iso){if(!iso)return '—';return new Date(iso).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'});}
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));

@@ -11,6 +11,10 @@
     {
       "source": "/piloto",
       "destination": "/piloto.html"
+    },
+    {
+      "source": "/guia",
+      "destination": "/guia-piloto.html"
     }
   ],
   "headers": [
