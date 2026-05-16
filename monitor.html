@@ -726,22 +726,27 @@ async function confirmarAsignacion(){
   cerrarModal('m-asignar');
   toast('Piloto asignado ✅','ok');
 
-  // Enviar notificación push al piloto
+  // Enviar notificación push al piloto via OneSignal
   try {
-    // Obtener FCM token del piloto
     const {data:pilotData}=await sb.from('pilotos').select('fcm_token,nombre').eq('id',pid).single();
     if(pilotData?.fcm_token){
-      const {data:{session:sess}}=await sb.auth.getSession();
-      await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/clever-endpoint',{
+      await fetch('https://onesignal.com/api/v1/notifications',{
         method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+(sess?.access_token||'')},
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Key os_v2_app_ttonhcuv7jepjlne7k72aywpp5ypvgepss5ezoepbig5flgokojdalxq5tsogsnnnkt7oybwi5zz4hxgksjlc4gcujuajmvzgyefo2q'
+        },
         body:JSON.stringify({
-          fcm_token: pilotData.fcm_token,
-          titulo: '🏍️ Nuevo pedido asignado',
-          cuerpo: '#'+(pedido?.numero_pedido||'')+' · '+(pedido?.cliente_nombre||'')+' · '+(pedido?.direccion||'')
+          app_id:'9cdcd38a-95fa-48f4-ada4-fabfa062cf7f',
+          include_aliases:{ external_id:[usuario?.id] },
+          target_channel:'push',
+          headings:{en:'🏍️ Nuevo pedido asignado'},
+          contents:{en:'#'+(pedido?.numero_pedido||'')+' · '+(pedido?.cliente_nombre||'')+' · '+(pedido?.direccion||'')},
+          url:'https://monitoreofarmpaz.navigroup.co/piloto',
+          priority:10
         })
       });
-      console.log('Push enviado a',pilotData.nombre);
+      console.log('Push OneSignal enviado a',pilotData.nombre);
     }
   } catch(e){ console.log('Notificación no enviada:', e.message); }
 }
