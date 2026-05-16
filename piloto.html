@@ -13,24 +13,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Limpiar service workers que no sean de OneSignal
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => {
-        const url = r.active?.scriptURL || r.installing?.scriptURL || '';
-        if (!url.includes('OneSignalSDKWorker')) {
-          console.log('[SW] Eliminando SW conflictivo:', url);
-          r.unregister();
-        }
-      });
-    });
-  }
+  // Limpiar TODOS los SW para garantizar un estado limpio
+  // La promesa se guarda para que OneSignal la espere antes de init()
+  window._swCleanup = ('serviceWorker' in navigator)
+    ? navigator.serviceWorker.getRegistrations()
+        .then(regs => {
+          console.log('[SW] Encontrados:', regs.length, 'service workers');
+          return Promise.all(regs.map(r => {
+            console.log('[SW] Eliminando:', r.active?.scriptURL || 'pendiente');
+            return r.unregister();
+          }));
+        })
+        .then(() => console.log('[SW] Limpieza completa ✅'))
+        .catch(e => console.warn('[SW] Error en limpieza:', e.message))
+    : Promise.resolve();
 </script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
+      // Esperar que se limpien todos los SW antes de registrar el nuevo
+      await window._swCleanup;
       await Promise.race([
         OneSignal.init({
           appId: "9cdcd38a-95fa-48f4-ada4-fabfa062cf7f",
@@ -39,7 +43,7 @@
           serviceWorkerPath: '/OneSignalSDKWorker.js',
           serviceWorkerParam: { scope: '/' }
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 8s')), 8000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout 10s')), 10000))
       ]);
       console.log('[OneSignal] Init completo ✅');
     } catch(err) {
