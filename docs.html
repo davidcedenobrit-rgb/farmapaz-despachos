@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farmapaz Delivery · Documentación del Sistema</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#080a10;--bg2:#0f1119;--bg3:#141720;--border:#1e2436;--border2:#252d40;
+  --text:#d8dff0;--muted:#4a5270;--muted2:#7880a0;
+  --orange:#f97316;--orange2:#fb923c;--green:#22c55e;--blue:#60a5fa;--purple:#a78bfa;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
+a{color:var(--orange2);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,10,16,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;}
+.tb-brand{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--orange2);}
+.tb-brand span{color:var(--muted2);font-size:13px;font-weight:400;font-family:'Inter',sans-serif;margin-left:8px;}
+.tb-links{display:flex;gap:20px;}
+.tb-links a{font-size:12px;font-weight:600;color:var(--muted2);}
+.tb-links a:hover{color:var(--orange2);text-decoration:none;}
+
+/* HERO */
+.hero{text-align:center;padding:72px 24px 56px;background:radial-gradient(ellipse at 50% 0%,#0d1f3a,var(--bg));border-bottom:1px solid var(--border2);}
+.hero-pill{display:inline-block;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:20px;padding:4px 16px;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--orange2);text-transform:uppercase;margin-bottom:18px;}
+.hero-title{font-family:'Rajdhani',sans-serif;font-size:52px;font-weight:700;line-height:1.1;margin-bottom:14px;}
+.hero-title span{color:var(--orange);}
+.hero-sub{font-size:16px;color:var(--muted2);max-width:560px;margin:0 auto 28px;}
+.hero-badges{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;}
+.hbadge{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;color:var(--muted2);}
+.hbadge.green{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.2);color:var(--green);}
+.hbadge.orange{background:rgba(249,115,22,.05);border-color:rgba(249,115,22,.2);color:var(--orange2);}
+.hbadge.blue{background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2);color:var(--blue);}
+
+/* LAYOUT */
+.container{max-width:960px;margin:0 auto;padding:0 24px;}
+.section{padding:56px 0 0;}
+.section-label{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--orange);margin-bottom:20px;}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;margin-bottom:12px;}
+.section-sub{font-size:15px;color:var(--muted2);max-width:640px;margin-bottom:32px;line-height:1.7;}
+
+/* CARDS GRID */
+.cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;}
+@media(max-width:700px){.cards-3{grid-template-columns:1fr;}}
+.cards-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:32px;}
+@media(max-width:600px){.cards-2{grid-template-columns:1fr;}}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;}
+.card-icon{font-size:28px;margin-bottom:14px;}
+.card-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;margin-bottom:8px;}
+.card-desc{font-size:13px;color:var(--muted2);line-height:1.6;}
+.card.highlight{border-color:rgba(249,115,22,.3);background:linear-gradient(135deg,rgba(249,115,22,.05),var(--bg2));}
+.card-url{display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid rgba(96,165,250,.3);border-radius:8px;padding:6px 12px;font-family:monospace;font-size:12px;color:var(--blue);margin-top:12px;}
+
+/* FLOW */
+.flow{display:flex;align-items:flex-start;gap:0;margin:24px 0 32px;flex-wrap:wrap;}
+.flow-step{display:flex;flex-direction:column;align-items:center;flex:1;min-width:120px;}
+.flow-dot{width:44px;height:44px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--bg2);z-index:1;position:relative;}
+.flow-line{flex:1;height:2px;background:var(--border2);margin-top:21px;min-width:20px;}
+.flow-label{font-size:11px;font-weight:600;color:var(--muted2);margin-top:10px;text-align:center;max-width:90px;}
+.flow-state{font-size:10px;color:var(--muted);text-align:center;margin-top:3px;max-width:90px;}
+.flow-step.active .flow-dot{border-color:var(--orange);background:rgba(249,115,22,.1);}
+.flow-step.active .flow-label{color:var(--orange2);}
+.flow-step.done .flow-dot{border-color:var(--green);background:rgba(34,197,94,.1);}
+.flow-step.done .flow-label{color:var(--green);}
+
+/* ROLES TABLE */
+.rtable{width:100%;border-collapse:collapse;margin-bottom:32px;}
+.rtable th{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border2);background:var(--bg2);}
+.rtable td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
+.rtable tr:last-child td{border-bottom:none;}
+.rtable tr:hover td{background:rgba(255,255,255,.02);}
+.role-pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.r-monitor{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.3);}
+.r-callcenter{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.3);}
+.r-piloto{background:rgba(249,115,22,.1);color:var(--orange2);border:1px solid rgba(249,115,22,.3);}
+
+/* RULES */
+.rules-list{display:flex;flex-direction:column;gap:10px;margin-bottom:32px;}
+.rule-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;}
+.rule-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.rule-title{font-weight:600;margin-bottom:3px;}
+.rule-desc{font-size:13px;color:var(--muted2);line-height:1.5;}
+
+/* TECH STACK */
+.tech-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:32px;}
+@media(max-width:600px){.tech-grid{grid-template-columns:1fr;}}
+.tech-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start;}
+.tech-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.tech-name{font-weight:700;font-size:14px;margin-bottom:2px;}
+.tech-desc{font-size:12px;color:var(--muted2);}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:56px 0 0;}
+
+/* FOOTER */
+.footer{text-align:center;padding:48px 24px;margin-top:56px;border-top:1px solid var(--border);}
+.footer-logo{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--orange2);margin-bottom:6px;}
+.footer-sub{font-size:12px;color:var(--muted);}
+
+/* PRINT */
+@media print{
+  .topbar{display:none;}
+  body{background:#fff;color:#111;}
+  .card,.rule-item,.tech-item{border:1px solid #ddd;break-inside:avoid;}
+  .hero{background:#f97316;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .hero-title,.hero-pill,.hero-sub{color:#fff !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">Farmapaz <span>· Documentación del Sistema</span></div>
+  <div class="tb-links">
+    <a href="#modulos">Módulos</a>
+    <a href="#flujo">Flujos</a>
+    <a href="#reglas">Reglas</a>
+    <a href="#accesos">Accesos</a>
+    <button onclick="window.print()" style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:8px;padding:6px 14px;color:#fb923c;font-size:12px;font-weight:600;cursor:pointer;">⬇ PDF</button>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-pill">Navi Group · Documentación Oficial</div>
+  <h1 class="hero-title">Farmapaz <span>Delivery</span><br>Sistema de Despachos</h1>
+  <p class="hero-sub">Documentación completa del sistema de monitoreo, despachos y seguimiento en tiempo real para Farmapaz.</p>
+  <div class="hero-badges">
+    <div class="hbadge green">● Sistema en producción</div>
+    <div class="hbadge orange">3 módulos activos</div>
+    <div class="hbadge blue">Tiempo real · GPS · Push</div>
+    <div class="hbadge">Versión 2.0 · Mayo 2026</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- MÓDULOS -->
+  <div class="section" id="modulos">
+    <div class="section-label">Módulos del sistema</div>
+    <div class="section-title">Tres portales, un sistema integrado</div>
+    <p class="section-sub">Cada usuario accede a su módulo con credenciales propias. La información fluye en tiempo real entre los tres portales sin necesidad de actualizaciones manuales.</p>
+    <div class="cards-3">
+      <div class="card highlight">
+        <div class="card-icon">🖥️</div>
+        <div class="card-title">Monitor</div>
+        <div class="card-desc">Panel central de operaciones. Crea pedidos, asigna pilotos, monitorea entregas en tiempo real, ve el GPS de cada piloto y accede a reportes.</div>
+        <div class="card-url">🔗 /monitor</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📞</div>
+        <div class="card-title">Call Center</div>
+        <div class="card-desc">Vista simplificada para el equipo de atención. Consulta el estado de pedidos del día y actualiza información del cliente sin acceso a funciones de operación.</div>
+        <div class="card-url">🔗 /callcenter</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏍️</div>
+        <div class="card-title">Portal Piloto</div>
+        <div class="card-desc">App instalable en el teléfono del piloto. Recibe notificaciones push, ve sus pedidos asignados, activa GPS y confirma salida y entrega.</div>
+        <div class="card-url">🔗 /piloto</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROLES -->
+  <div class="section">
+    <div class="section-label">Roles y permisos</div>
+    <div class="section-title">Control de acceso por rol</div>
+    <p class="section-sub">Cada usuario tiene un rol asignado en la base de datos que determina a qué módulo accede y qué operaciones puede realizar.</p>
+    <table class="rtable">
+      <thead>
+        <tr><th>Rol</th><th>Portal</th><th>Puede hacer</th><th>No puede hacer</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="role-pill r-monitor">Monitor</span></td>
+          <td style="color:var(--muted2)">/monitor</td>
+          <td style="color:var(--muted2)">Crear pedidos, asignar pilotos, cambiar estados, ver GPS, exportar reportes, ver historial completo</td>
+          <td style="color:var(--muted)">—</td>
+        </tr>
+        <tr>
+          <td><span class="role-pill r-callcenter">Call Center</span></td>
+          <td style="color:var(--muted2)">/callcenter</td>
+          <td style="color:var(--muted2)">Ver estado de pedidos del día, consultar piloto asignado, ver datos del cliente</td>
+          <td style="color:var(--muted)">Crear/editar pedidos, ver historial, acceder a reportes</td>
+        </tr>
+        <tr>
+          <td><span class="role-pill r-piloto">Piloto</span></td>
+          <td style="color:var(--muted2)">/piloto</td>
+          <td style="color:var(--muted2)">Ver sus pedidos asignados del día, confirmar salida y entrega, compartir ubicación GPS</td>
+          <td style="color:var(--muted)">Ver pedidos de otros pilotos, crear pedidos, acceder al monitor</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FLUJO -->
+  <div class="section" id="flujo">
+    <div class="section-label">Flujo de trabajo</div>
+    <div class="section-title">Ciclo completo de un despacho</div>
+    <p class="section-sub">Desde que se crea el pedido hasta que se cierra, el sistema registra cada transición de estado con marca de tiempo.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">📋</div>
+        <div class="flow-label">Creación</div>
+        <div class="flow-state">Monitor ingresa cliente, dirección y productos</div>
+      </div>
+      <div class="flow-line"></div>
+      <div class="flow-step">
+        <div class="flow-dot">⏳</div>
+        <div class="flow-label">En espera</div>
+        <div class="flow-state">Pedido pendiente de asignación</div>
+      </div>
+      <div class="flow-line"></div>
+      <div class="flow-step active">
+        <div class="flow-dot">🏍️</div>
+        <div class="flow-label">Asignado</div>
+        <div class="flow-state">Monitor asigna piloto → push enviado</div>
+      </div>
+      <div class="flow-line"></div>
+      <div class="flow-step active">
+        <div class="flow-dot">🚀</div>
+        <div class="flow-label">En Ruta</div>
+        <div class="flow-state">Piloto confirma salida · GPS activo</div>
+      </div>
+      <div class="flow-line"></div>
+      <div class="flow-step done">
+        <div class="flow-dot">✅</div>
+        <div class="flow-label">Entregado</div>
+        <div class="flow-state">Piloto confirma entrega · tiempo registrado</div>
+      </div>
+      <div class="flow-line"></div>
+      <div class="flow-step done">
+        <div class="flow-dot">🔒</div>
+        <div class="flow-label">Cerrado</div>
+        <div class="flow-state">Monitor cierra el ciclo</div>
+      </div>
+    </div>
+
+    <div class="cards-2">
+      <div class="card">
+        <div class="card-icon">📳</div>
+        <div class="card-title">Flujo de notificación push</div>
+        <div class="card-desc">
+          1. Monitor asigna piloto al pedido<br>
+          2. Sistema llama a la función <em>send-push</em><br>
+          3. Función recupera la suscripción del piloto<br>
+          4. Push enviado vía Web Push / VAPID<br>
+          5. Teléfono muestra la notificación aunque la app esté cerrada<br>
+          6. Monitor ve "📱 Push 09:58" debajo del nombre del piloto
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📍</div>
+        <div class="card-title">Flujo de GPS</div>
+        <div class="card-desc">
+          1. Piloto toca el indicador GPS en la app<br>
+          2. App solicita permiso de ubicación al sistema<br>
+          3. Coordenadas se guardan en Supabase cada 30 segundos<br>
+          4. Monitor ve enlace "📍 Ver · X min ago" en la tabla<br>
+          5. Al tocar el enlace abre Google Maps con la ubicación del piloto
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGLAS -->
+  <div class="section" id="reglas">
+    <div class="section-label">Reglas del sistema</div>
+    <div class="section-title">Lógica de negocio implementada</div>
+    <p class="section-sub">El sistema aplica automáticamente estas reglas sin requerir acción manual.</p>
+    <div class="rules-list">
+      <div class="rule-item">
+        <div class="rule-icon">📅</div>
+        <div>
+          <div class="rule-title">Pedidos del día</div>
+          <div class="rule-desc">Cada portal muestra únicamente los pedidos creados el día en curso. Los reportes permiten acceder al histórico completo filtrado por período.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🔒</div>
+        <div>
+          <div class="rule-title">Aislamiento de datos por rol</div>
+          <div class="rule-desc">Un piloto solo puede ver sus propios pedidos. El call center solo puede leer, no modificar. El monitor tiene acceso completo. Esta seguridad está implementada a nivel de base de datos (RLS), no solo en la interfaz.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">⏱️</div>
+        <div>
+          <div class="rule-title">Alertas de tiempo</div>
+          <div class="rule-desc">El monitor muestra alertas visuales cuando un pedido en ruta supera el tiempo estimado. El contador de tiempo inicia en el momento exacto que el piloto confirma la salida.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🔔</div>
+        <div>
+          <div class="rule-title">Notificación push al asignar</div>
+          <div class="rule-desc">Cada vez que el monitor asigna un piloto a un pedido, se envía automáticamente una notificación push al teléfono del piloto con el número de pedido, cliente y dirección. El sistema registra la hora exacta del envío.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🔄</div>
+        <div>
+          <div class="rule-title">Actualización en tiempo real</div>
+          <div class="rule-desc">Todos los portales se actualizan automáticamente vía WebSocket (Supabase Realtime). No es necesario refrescar la página. Como respaldo adicional, el monitor se sincroniza también cada 15 segundos.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">📍</div>
+        <div>
+          <div class="rule-title">GPS solo en estado activo</div>
+          <div class="rule-desc">La ubicación del piloto solo es visible en el monitor cuando el pedido está en estado "en ruta" o "entregado" y el piloto tiene GPS activo. El enlace de mapa aparece junto al pedido correspondiente.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">📊</div>
+        <div>
+          <div class="rule-title">Reportes automáticos</div>
+          <div class="rule-desc">El módulo de reportes calcula automáticamente: total de pedidos, tasa de entrega, tiempo promedio por piloto y exporta todo a Excel con un click.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TECNOLOGÍA -->
+  <div class="section">
+    <div class="section-label">Tecnología</div>
+    <div class="section-title">Infraestructura del sistema</div>
+    <p class="section-sub">Construido sobre plataformas de clase mundial, con cero infraestructura propia que mantener.</p>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-logo" style="background:rgba(62,207,142,.1);">🟢</div>
+        <div>
+          <div class="tech-name">Supabase</div>
+          <div class="tech-desc">Base de datos PostgreSQL, autenticación de usuarios, WebSockets en tiempo real y funciones serverless (Edge Functions) para el envío de push notifications.</div>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-logo" style="background:rgba(0,0,0,.3);">▲</div>
+        <div>
+          <div class="tech-name">Vercel</div>
+          <div class="tech-desc">Hosting global con CDN. Todos los archivos del sistema se sirven con alta disponibilidad desde múltiples regiones. SSL/HTTPS automático.</div>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-logo" style="background:rgba(249,115,22,.1);">🔔</div>
+        <div>
+          <div class="tech-name">Web Push (VAPID)</div>
+          <div class="tech-desc">Notificaciones push nativas del navegador sin depender de servicios de terceros. Funciona en Android Chrome instalado como PWA.</div>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-logo" style="background:rgba(96,165,250,.1);">📱</div>
+        <div>
+          <div class="tech-name">Progressive Web App</div>
+          <div class="tech-desc">La app del piloto se instala en el teléfono directamente desde Chrome, sin App Store ni Google Play. Funciona como una app nativa.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCESOS -->
+  <div class="section" id="accesos">
+    <div class="section-label">Accesos</div>
+    <div class="section-title">URLs del sistema en producción</div>
+    <p class="section-sub">El sistema está disponible 24/7. El acceso requiere credenciales activas asignadas por el administrador.</p>
+    <div class="cards-3">
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <div class="card-title">Login principal</div>
+        <div class="card-desc">Página de inicio de sesión para Monitor y Call Center.</div>
+        <div class="card-url">monitoreofarmpaz.navigroup.co</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏍️</div>
+        <div class="card-title">Portal Piloto</div>
+        <div class="card-desc">App del piloto. Compartir este enlace con los pilotos para que instalen la PWA.</div>
+        <div class="card-url">…navigroup.co/piloto</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <div class="card-title">Guía del Piloto</div>
+        <div class="card-desc">Manual de uso para pilotos con instrucciones paso a paso e instructivo imprimible.</div>
+        <div class="card-url">…navigroup.co/guia</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOPORTE -->
+  <div class="section">
+    <div class="section-label">Soporte</div>
+    <div class="section-title">¿Tienes alguna consulta?</div>
+    <div class="cards-2">
+      <div class="card">
+        <div class="card-icon">🛠️</div>
+        <div class="card-title">Soporte técnico</div>
+        <div class="card-desc">Para reportar errores técnicos, solicitar cambios o nuevas funcionalidades, contacta al equipo de desarrollo de Navi Group a través de tu canal habitual.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">👥</div>
+        <div class="card-title">Gestión de usuarios</div>
+        <div class="card-desc">Para crear nuevos usuarios (monitores, pilotos, call center), cambiar contraseñas o desactivar accesos, el administrador del sistema puede gestionarlo directamente desde el panel de Supabase o solicitarlo a Navi Group.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-logo">Navi Group · Farmapaz Delivery</div>
+  <div class="footer-sub">Documentación del Sistema · v2.0 · Mayo 2026 · Desarrollado por Navi Group para Farmapaz</div>
+</div>
+
+</body>
+</html>
