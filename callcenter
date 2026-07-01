@@ -160,6 +160,13 @@ const sb=supabase.createClient(
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
 );
 
+// Venezuela es UTC-4 fijo. toISOString() da UTC, así que a las 8pm hora local
+// (medianoche UTC) "hoy" saltaba al día siguiente y ocultaba pedidos del día.
+function fechaLocalVenezuela(d = new Date()) {
+  const offsetMs = d.getTime() - 4 * 60 * 60 * 1000;
+  return new Date(offsetMs).toISOString().split('T')[0];
+}
+
 let usuario=null, pedidos=[];
 
 // AUTH — verificar sesión al cargar
@@ -220,7 +227,7 @@ async function crearPedido(){
 
 // CARGAR PEDIDOS
 async function cargarPedidos(){
-  const hoy=new Date().toISOString().split('T')[0];
+  const hoy=fechaLocalVenezuela();
   const {data}=await sb.from('pedidos')
     .select('*, pilotos(nombre)')
     .gte('created_at',hoy+'T00:00:00')

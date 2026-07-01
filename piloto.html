@@ -66,6 +66,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 /* CONTENT */
 .content{padding:16px;flex:1;}
 
+/* TABS */
+.tab-btn{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px;color:var(--muted2);font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.tab-btn.tab-active{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.35);color:var(--orange);}
+
 /* EMPTY */
 .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
 .empty-ico{font-size:48px;display:block;margin-bottom:14px;}
@@ -223,9 +227,27 @@ const sb=supabase.createClient(
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
 );
 
+// Venezuela es UTC-4 fijo (sin horario de verano). new Date().toISOString()
+// devuelve la fecha en UTC, así que a las 8pm hora local ya es medianoche UTC
+// y "hoy" saltaría al día siguiente si se usara toISOString() directo.
+function fechaLocalVenezuela(d = new Date()) {
+  const offsetMs = d.getTime() - 4 * 60 * 60 * 1000;
+  return new Date(offsetMs).toISOString().split('T')[0];
+}
+
+function normalizarTelWA(tel) {
+  let n = (tel || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (n.startsWith('0')) n = '58' + n.slice(1);
+  if (!n.startsWith('58')) n = '58' + n;
+  return n;
+}
+
 let usuario=null, perfil=null, piloto=null;
 let pedidos=[], miLat=null, miLng=null;
 let gpsWatchId=null, gpsUpdateTimer=null;
+let vistaActual='activos'; // 'activos' | 'historial'
+let historialDesde=null, historialHasta=null;
 
 const VAPID_PUBLIC_KEY = 'BBb0o9NATzdXywhI-7H54GmyT0IpNTsi3G0-cwc4n7wqWe0UB79r3vNhkV_IqiN8hOnJ_HJ1mM14aVDc1p5PoT4';
 
@@ -486,7 +508,7 @@ function setGPSStatus(estado,txt){
 // ── PEDIDOS ───────────────────────────────────────
 async function cargarPedidos(){
   if(!piloto){renderPedidos([]);return;}
-  const hoy=new Date().toISOString().split('T')[0];
+  const hoy=fechaLocalVenezuela();
   const {data,error}=await sb.from('pedidos')
     .select('*')
     .eq('piloto_id',piloto.id)
@@ -495,17 +517,52 @@ async function cargarPedidos(){
     .order('created_at',{ascending:false});
   if(error){toast('Error al cargar pedidos','err');return;}
   pedidos=data||[];
-  renderPedidos(pedidos);
+  if(vistaActual==='activos') renderPedidos(pedidos);
+}
+
+async function cargarHistorial(){
+  if(!piloto)return;
+  const wrap=document.getElementById('pedidos-wrap');
+  wrap.innerHTML=`<div class="loader"><div class="spin"></div></div>`;
+  const desde=historialDesde||fechaLocalVenezuela(new Date(Date.now()-6*24*60*60*1000));
+  const hasta=historialHasta||fechaLocalVenezuela();
+  historialDesde=desde;historialHasta=hasta;
+  const {data,error}=await sb.from('pedidos')
+    .select('*')
+    .eq('piloto_id',piloto.id)
+    .gte('created_at',desde+'T00:00:00')
+    .lte('created_at',hasta+'T23:59:59')
+    .order('created_at',{ascending:false});
+  if(error){toast('Error al cargar historial','err');return;}
+  renderHistorial(data||[]);
+}
+
+function renderTabs(){
+  const wrap=document.getElementById('pedidos-wrap');
+  const tabsHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="tab-btn ${vistaActual==='activos'?'tab-active':''}" onclick="cambiarVista('activos')">Pedidos activos</button>
+      <button class="tab-btn ${vistaActual==='historial'?'tab-active':''}" onclick="cambiarVista('historial')">Historial</button>
+    </div>`;
+  return tabsHTML;
+}
+
+function cambiarVista(v){
+  vistaActual=v;
+  if(v==='activos'){renderPedidos(pedidos);}
+  else{cargarHistorial();}
 }
 
 function renderPedidos(lista){
   const wrap=document.getElementById('pedidos-wrap');
+  let html=renderTabs();
   if(!lista.length){
-    wrap.innerHTML=`
+    html+=`
       <div class="empty-state">
         <span class="empty-ico">📭</span>
         <div class="empty-txt">No tienes despachos asignados<br>por ahora.<br><br>El Monitor te asignará pedidos<br>cuando estén listos.</div>
       </div>`;
+    wrap.innerHTML=html;
     return;
   }
 
@@ -513,7 +570,6 @@ function renderPedidos(lista){
   const activos=lista.filter(p=>p.estado!=='entregado');
   const entregados=lista.filter(p=>p.estado==='entregado');
 
-  let html='';
   if(activos.length){
     html+=activos.map(p=>cardHTML(p)).join('');
   }
@@ -524,7 +580,40 @@ function renderPedidos(lista){
   wrap.innerHTML=html;
 }
 
-function cardHTML(p){
+function renderHistorial(lista){
+  const wrap=document.getElementById('pedidos-wrap');
+  let html=renderTabs();
+  html+=`
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;">
+      <div style="flex:1;">
+        <label class="lbl" style="margin-bottom:6px;">Desde</label>
+        <input type="date" id="hist-desde" class="linp" style="margin-bottom:0;padding:10px;" value="${historialDesde}" onchange="aplicarFiltroHistorial()">
+      </div>
+      <div style="flex:1;">
+        <label class="lbl" style="margin-bottom:6px;">Hasta</label>
+        <input type="date" id="hist-hasta" class="linp" style="margin-bottom:0;padding:10px;" value="${historialHasta}" onchange="aplicarFiltroHistorial()">
+      </div>
+    </div>`;
+  if(!lista.length){
+    html+=`
+      <div class="empty-state">
+        <span class="empty-ico">🗂️</span>
+        <div class="empty-txt">No hay pedidos en este rango de fechas.</div>
+      </div>`;
+    wrap.innerHTML=html;
+    return;
+  }
+  html+=lista.map(p=>cardHTML(p,true)).join('');
+  wrap.innerHTML=html;
+}
+
+function aplicarFiltroHistorial(){
+  historialDesde=document.getElementById('hist-desde').value;
+  historialHasta=document.getElementById('hist-hasta').value;
+  if(historialDesde&&historialHasta) cargarHistorial();
+}
+
+function cardHTML(p,soloLectura){
   const eLabel={asignado:'ASIGNADO',en_ruta:'EN RUTA',entregado:'ENTREGADO'}[p.estado]||p.estado;
   const eBadge={asignado:'b-asignado',en_ruta:'b-en_ruta',entregado:'b-entregado'}[p.estado]||'';
 
@@ -543,10 +632,34 @@ function cardHTML(p){
     ?`<div class="pc-desc">📦 ${p.descripcion}</div>`:'';
 
   // Teléfono (sin mapa — el piloto usa la dirección escrita por el monitor)
+  const numWA=normalizarTelWA(p.cliente_telefono);
+  const msgEnVia=encodeURIComponent('Hola, tu pedido de Farmapaz va en camino 🚴');
+  const msgLlegando=encodeURIComponent('Hola, tu pedido está por llegar 📦');
   const telHTML=p.cliente_telefono?`
     <div class="pc-tel">
-      <a class="tel-btn" href="tel:${p.cliente_telefono}" style="flex:1;">📞 Llamar al cliente</a>
-    </div>`:'';
+      <a class="tel-btn" href="tel:${p.cliente_telefono}" style="flex:1;">📞 Llamar</a>
+    </div>
+    ${numWA?`
+    <div class="pc-tel">
+      <a class="tel-btn" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25);color:#4ade80;flex:1;" target="_blank" rel="noopener" href="https://wa.me/${numWA}?text=${msgEnVia}">🚴 En vía</a>
+      <a class="tel-btn" style="background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25);color:#4ade80;flex:1;" target="_blank" rel="noopener" href="https://wa.me/${numWA}?text=${msgLlegando}">📦 Llegando</a>
+    </div>`:''}`:'';
+
+  if(soloLectura){
+    return `
+    <div class="pedido-card">
+      <div class="pc-head">
+        <div><div class="pc-num">#${p.numero_pedido}</div></div>
+        <div class="pc-badge ${eBadge}">${eLabel}</div>
+      </div>
+      <div class="pc-body">
+        <div class="pc-cliente">${p.cliente_nombre}</div>
+        <div class="pc-dir" style="font-size:14px;color:var(--text);background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:12px;"><span class="pc-dir-ico">📍</span>${p.direccion}</div>
+        ${descHTML}
+        <div style="font-size:11px;color:var(--muted2);">${new Date(p.created_at).toLocaleString('es-VE')}${p.entregado_at?` · Entregado ${formatHora(p.entregado_at)}`:''}</div>
+      </div>
+    </div>`;
+  }
 
   // Botones de acción
   let accionHTML='';

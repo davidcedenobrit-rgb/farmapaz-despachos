@@ -278,7 +278,7 @@ a:hover{text-decoration:underline;}
         <div class="rule-icon">📅</div>
         <div>
           <div class="rule-title">Pedidos del día</div>
-          <div class="rule-desc">Cada portal muestra únicamente los pedidos creados el día en curso. Los reportes permiten acceder al histórico completo filtrado por período.</div>
+          <div class="rule-desc">Cada portal muestra únicamente los pedidos creados el día en curso, calculado en hora de Venezuela (no UTC) para que no se "pierdan" pedidos activos cerca de las 8pm. Los reportes permiten acceder al histórico completo filtrado por período, y el piloto ahora tiene su propia pestaña "Historial" con selector de fechas para ver sus pedidos de días anteriores.</div>
         </div>
       </div>
       <div class="rule-item">
@@ -313,7 +313,19 @@ a:hover{text-decoration:underline;}
         <div class="rule-icon">📍</div>
         <div>
           <div class="rule-title">GPS solo en estado activo</div>
-          <div class="rule-desc">La ubicación del piloto solo es visible en el monitor cuando el pedido está en estado "en ruta" o "entregado" y el piloto tiene GPS activo. El enlace de mapa aparece junto al pedido correspondiente.</div>
+          <div class="rule-desc">La ubicación del piloto solo es visible en el monitor cuando el pedido está en estado "en ruta" o "entregado" y el piloto tiene GPS activo. El enlace de mapa aparece junto al pedido correspondiente, y en la pestaña "📍 GPS Pilotos" se ve un mapa en vivo con todos los pilotos activos, actualizado cada 30 segundos.
+            <br><br><strong>Para que funcione, el piloto debe:</strong><br>
+            1. Aceptar el permiso de ubicación del navegador/app al iniciar sesión (si lo rechaza, debe activarlo manualmente en Ajustes del teléfono).<br>
+            2. Mantener la app abierta o instalada en el teléfono — si Android cierra la app en segundo plano, el GPS deja de reportarse hasta que la vuelva a abrir.<br>
+            3. Tocar el indicador GPS en la parte superior si aparece en rojo o apagado.
+          </div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-icon">🛣️</div>
+        <div>
+          <div class="rule-title">Recorrido histórico (a futuro)</div>
+          <div class="rule-desc">Hoy el sistema muestra la posición <em>actual</em> del piloto, no guarda un historial de puntos recorridos. Para ver la ruta completa que hizo un piloto durante una entrega se necesitaría: crear una tabla de registro de posiciones (log con timestamp), guardar cada actualización de GPS en vez de solo sobrescribir la última, y dibujar esa ruta en el mapa como una línea. Es una mejora a mediano plazo, no incluida en este sprint.</div>
         </div>
       </div>
       <div class="rule-item">

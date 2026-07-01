@@ -318,7 +318,11 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
       </div>
       <div class="sb-divider"></div>
       <div class="sb-sec">
-        <div class="sb-title"><span>Pilotos</span><span id="sb-pilotos-cnt" style="font-size:10px;color:var(--muted2);text-transform:none;letter-spacing:0;font-weight:400;"></span></div>
+        <div class="sb-title">
+          <span>Pilotos</span>
+          <span id="sb-pilotos-cnt" style="font-size:10px;color:var(--muted2);text-transform:none;letter-spacing:0;font-weight:400;"></span>
+        </div>
+        <button style="width:100%;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.35);border-radius:7px;padding:8px;color:var(--orange);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:10px;" onclick="abrirModal('m-nuevo-piloto')">+ Nuevo piloto</button>
         <div id="sb-pilotos"><div style="font-size:11px;color:var(--muted)">Sin pilotos</div></div>
       </div>
     </div>
@@ -440,6 +444,21 @@ table.tbl tbody td{padding:10px 14px;vertical-align:middle;}
   </div>
 </div>
 
+<!-- MODAL NUEVO PILOTO -->
+<div class="overlay" id="m-nuevo-piloto">
+  <div class="modal">
+    <h3>🏍️ Nuevo Piloto</h3>
+    <div class="frow"><label class="flbl">Nombre completo</label><input class="finp" id="np-nombre" placeholder="Ej: Carlos Pérez"></div>
+    <div class="frow"><label class="flbl">Correo (usuario de acceso)</label><input class="finp" id="np-email" type="email" placeholder="piloto.carlos@farmapaz.com"></div>
+    <div class="frow"><label class="flbl">Contraseña temporal</label><input class="finp" id="np-pass" type="text" placeholder="Mínimo 8 caracteres"></div>
+    <div class="frow"><label class="flbl">Teléfono (opcional)</label><input class="finp" id="np-tel" placeholder="+58412-0000000"></div>
+    <div class="mact">
+      <button class="mcancel" onclick="cerrarModal('m-nuevo-piloto')">Cancelar</button>
+      <button class="mok" id="np-btn" onclick="crearPiloto()">Crear piloto</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIRMAR ELIMINACIÓN -->
 <div class="overlay" id="m-eliminar">
   <div class="modal modal-warn">
@@ -472,6 +491,15 @@ const sb=supabase.createClient(
   'https://juxvrbzrxnwrsbeespuc.supabase.co',
   'sb_publishable_O1sx_jWfwOGirGnxZf2Yqw_3BKBV3ti'
 );
+
+// Venezuela es UTC-4 fijo (sin horario de verano). toISOString() devuelve UTC,
+// así que a las 8pm hora local ya es medianoche UTC y "hoy" saltaría al día
+// siguiente si se usara toISOString() directo — eso causaba que los pedidos
+// del día "desaparecieran" de las consultas filtradas por fecha a esa hora.
+function fechaLocalVenezuela(d = new Date()) {
+  const offsetMs = d.getTime() - 4 * 60 * 60 * 1000;
+  return new Date(offsetMs).toISOString().split('T')[0];
+}
 
 let usuario=null,perfil=null,selId=null;
 let pedidos=[],pilotos=[],reportePedidos=[];
@@ -535,9 +563,46 @@ async function cargarPilotos(){
   });
 }
 
+async function crearPiloto(){
+  const nombre=document.getElementById('np-nombre').value.trim();
+  const email=document.getElementById('np-email').value.trim();
+  const pass=document.getElementById('np-pass').value;
+  const tel=document.getElementById('np-tel').value.trim();
+  if(!nombre||!email||!pass){toast('Completa nombre, correo y contraseña','err');return;}
+  if(pass.length<8){toast('La contraseña debe tener mínimo 8 caracteres','err');return;}
+
+  const btn=document.getElementById('np-btn');
+  btn.disabled=true;btn.textContent='Creando...';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const resp=await fetch('https://juxvrbzrxnwrsbeespuc.supabase.co/functions/v1/crear-usuario',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+session.access_token
+      },
+      body:JSON.stringify({email,password:pass,nombre,rol:'piloto',telefono:tel})
+    });
+    const result=await resp.json();
+    if(!resp.ok||result.error){
+      toast(result.error||'Error al crear el piloto','err');
+      return;
+    }
+    cerrarModal('m-nuevo-piloto');
+    ['np-nombre','np-email','np-pass','np-tel'].forEach(id=>document.getElementById(id).value='');
+    toast('✅ Piloto '+nombre+' creado','ok');
+    await cargarPilotos();
+    renderSidebar();
+  }catch(e){
+    toast('Error de conexión: '+e.message,'err');
+  }finally{
+    btn.disabled=false;btn.textContent='Crear piloto';
+  }
+}
+
 // ── MONITOR ───────────────────────────────────────
 async function cargarPedidos(){
-  const hoy=new Date().toISOString().split('T')[0];
+  const hoy=fechaLocalVenezuela();
   const {data}=await sb.from('pedidos')
     .select('*, pilotos(id,nombre,lat,lng,ubicacion_at)')
     .gte('created_at',hoy+'T00:00:00')
@@ -1091,7 +1156,7 @@ async function actualizarGPS() {
   if (!pilotos) return;
 
   // Obtener pedidos activos para estado de cada piloto
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = fechaLocalVenezuela();
   const { data: pedidosActivos } = await sb.from('pedidos')
     .select('piloto_id,estado,numero_pedido,cliente_nombre')
     .gte('created_at', hoy + 'T00:00:00')
